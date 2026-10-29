@@ -126,7 +126,10 @@ def test_producto_invalido():
     assert response.status_code == 400
 
 def test_panel_admin_y_stock_agotado():
-    assert client.get("/admin").status_code == 200
+    panel_path = settings.admin_panel_path or "/admin"
+    assert client.get(panel_path).status_code == 200
+    if panel_path != "/admin":
+        assert client.get("/admin").status_code == 404
     assert client.get("/api/admin/stock").status_code == 401
 
     headers = {"X-Admin-Token": settings.admin_token}

@@ -134,12 +134,21 @@ async def favicon() -> FileResponse:
     return FileResponse(settings.static_dir / "img" / "favicon.svg", media_type="image/svg+xml")
 
 
-@app.get("/admin", include_in_schema=False)
+ADMIN_PANEL_PATH = settings.admin_panel_path or "/admin"
+if not ADMIN_PANEL_PATH.startswith("/"):
+    ADMIN_PANEL_PATH = "/" + ADMIN_PANEL_PATH
+ADMIN_PANEL_PATH = ADMIN_PANEL_PATH.rstrip("/") or "/admin"
+
+
+@app.get(ADMIN_PANEL_PATH, include_in_schema=False)
 async def admin_page() -> FileResponse:
     return FileResponse(
         settings.static_dir / "admin.html",
         media_type="text/html",
-        headers={"Cache-Control": "no-store"},
+        headers={
+            "Cache-Control": "no-store",
+            "X-Robots-Tag": "noindex, nofollow",
+        },
     )
 
 

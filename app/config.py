@@ -99,6 +99,8 @@ class Settings:
 
     # Operación
     admin_token: str = _env("ADMIN_TOKEN")
+    # Ruta privada del panel del vendedor. Si se cambia, /admin deja de existir.
+    admin_panel_path: str = _env("ADMIN_PANEL_PATH", "/admin")
     allowed_origins: tuple[str, ...] = _env_list("ALLOWED_ORIGINS")
     session_ttl_minutes: int = _env_int("SESSION_TTL_MINUTES", 180)
     rate_limit_per_minute: int = _env_int("RATE_LIMIT_PER_MINUTE", 60)
