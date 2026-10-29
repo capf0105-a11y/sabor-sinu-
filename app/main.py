@@ -14,11 +14,13 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .emailer import send_order_email
+from .notifier import send_whatsapp_alert
 from .engine import ChatEngine
-from .menu import PRODUCTS, ZONES
+from .menu import PRODUCTS, PRODUCTS_BY_ID, ZONES
 from .orders import PAYMENT_LABELS, OrderStore, admin_order, public_order
-from .schemas import CartIn, ChatIn
+from .schemas import CartIn, ChatIn, StockIn
 from .sessions import SessionStore, cart_public
+from .stock import StockStore
 from .utils import RateLimiter
 
 logging.basicConfig(
@@ -29,8 +31,9 @@ logger = logging.getLogger("saborsinu")
 
 settings.ensure_dirs()
 store = OrderStore(settings.orders_file)
+stock = StockStore(settings.data_dir / "stock.json")
 sessions = SessionStore(settings.session_ttl_minutes)
-engine = ChatEngine(settings, store)
+engine = ChatEngine(settings, store, stock)
 limiter = RateLimiter(settings.rate_limit_per_minute)
 
 
@@ -104,6 +107,8 @@ def _notify_order(order_id: str) -> None:
         result["status"],
         f" · {result.get('error')}" if result.get("error") else "",
     )
+    whatsapp = send_whatsapp_alert(order, settings)
+    logger.info("WhatsApp pedido %s: %s", order_id, whatsapp["status"])
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +128,20 @@ async def index() -> FileResponse:
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon() -> FileResponse:
     return FileResponse(settings.static_dir / "img" / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/admin", include_in_schema=False)
+async def admin_page() -> FileResponse:
+    return FileResponse(
+        settings.static_dir / "admin.html",
+        media_type="text/html",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/credits", include_in_schema=False)
+async def credits_page() -> FileResponse:
+    return FileResponse(settings.static_dir / "credits.html", media_type="text/html")
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +194,7 @@ async def get_config() -> dict:
         "payments": [{"id": key, "label": label} for key, label in PAYMENT_LABELS.items()],
         "features": {
             "email_configured": settings.email_configured,
+            "whatsapp_configured": settings.whatsapp_alerts_enabled,
             "max_message_chars": settings.max_message_chars,
         },
     }
@@ -183,7 +203,10 @@ async def get_config() -> dict:
 @app.get("/api/menu")
 async def get_menu() -> dict:
     return {
-        "items": [product.public() for product in PRODUCTS],
+        "items": [
+            {**product.public(), "available": stock.is_available(product.id)}
+            for product in PRODUCTS
+        ],
         "categories": ["Principales", "Bebidas"],
         "currency": "COP",
     }
@@ -268,6 +291,36 @@ async def resend_email(order_id: str, background: BackgroundTasks) -> dict:
         raise HTTPException(status_code=404, detail="Pedido no encontrado.")
     background.add_task(_notify_order, order["id"])
     return {"status": "queued", "order_id": order["id"]}
+
+
+@app.get("/api/admin/stock", dependencies=[Depends(require_admin)])
+async def admin_stock() -> dict:
+    return {
+        "items": [
+            {
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "category": product.category,
+                "image": product.image,
+                "available": stock.is_available(product.id),
+            }
+            for product in PRODUCTS
+        ]
+    }
+
+
+@app.put("/api/admin/stock/{product_id}", dependencies=[Depends(require_admin)])
+async def set_stock(product_id: str, payload: StockIn) -> dict:
+    product = PRODUCTS_BY_ID.get(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Producto no encontrado.")
+    stock.set_available(product.id, payload.available)
+    return {
+        "id": product.id,
+        "name": product.name,
+        "available": stock.is_available(product.id),
+    }
 
 
 # ---------------------------------------------------------------------------

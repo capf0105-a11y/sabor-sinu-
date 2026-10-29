@@ -85,7 +85,7 @@ def test_flujo_http_hasta_pedido_y_correo():
     data = final.json()
     assert data["stage"] == "confirmed"
     order = data["order"]
-    assert order["total"] == 42100  # 33.600 + 4.500 + 4.000 de domicilio
+    assert order["total"] == 40100  # 33.600 + 4.500 + 2.000 de domicilio
     assert order["customer"]["barrio"] == "Centro"
     assert order["customer"]["address"] == "Calle 30 #8-12"
 
@@ -124,3 +124,29 @@ def test_producto_invalido():
         "/api/cart", json={"action": "add", "product_id": "no-existe", "qty": 1}
     )
     assert response.status_code == 400
+
+def test_panel_admin_y_stock_agotado():
+    assert client.get("/admin").status_code == 200
+    assert client.get("/api/admin/stock").status_code == 401
+
+    headers = {"X-Admin-Token": settings.admin_token}
+    response = client.put(
+        "/api/admin/stock/suizo", json={"available": False}, headers=headers
+    )
+    assert response.status_code == 200
+    assert response.json()["available"] is False
+
+    menu = client.get("/api/menu").json()
+    suizo = next(item for item in menu["items"] if item["id"] == "suizo")
+    assert suizo["available"] is False
+
+    chat = client.post("/api/chat", json={"message": "Quiero un suizo"}).json()
+    assert "no tenemos" in chat["blocks"][0]["text"].lower()
+
+    response = client.put(
+        "/api/admin/stock/suizo", json={"available": True}, headers=headers
+    )
+    assert response.json()["available"] is True
+    menu = client.get("/api/menu").json()
+    suizo = next(item for item in menu["items"] if item["id"] == "suizo")
+    assert suizo["available"] is True

@@ -70,7 +70,7 @@ class Settings:
     business_instagram: str = _env("BUSINESS_INSTAGRAM", "@saborsinu")
 
     # Domicilios y tiempos
-    delivery_base_fee: int = _env_int("DELIVERY_BASE_FEE", 6000)
+    delivery_base_fee: int = _env_int("DELIVERY_BASE_FEE", 2000)
     free_delivery_from: int = _env_int("FREE_DELIVERY_FROM", 80000)
     prep_minutes: int = _env_int("PREP_MINUTES", 25)
     delivery_minutes: int = _env_int("DELIVERY_MINUTES", 20)
@@ -88,6 +88,10 @@ class Settings:
     smtp_timeout: int = _env_int("SMTP_TIMEOUT", 15)
     admin_emails: tuple[str, ...] = _env_list("ADMIN_EMAILS")
     email_dry_run: bool = _env_bool("EMAIL_DRY_RUN", not bool(_smtp_host))
+
+    # WhatsApp del vendedor (CallMeBot)
+    whatsapp_alert_phone: str = _env("WHATSAPP_ALERT_PHONE")
+    callmebot_api_key: str = _env("CALLMEBOT_API_KEY")
 
     # Operación
     admin_token: str = _env("ADMIN_TOKEN")
@@ -115,6 +119,10 @@ class Settings:
     @property
     def email_configured(self) -> bool:
         return bool(self.smtp_host and self.admin_emails and not self.email_dry_run)
+
+    @property
+    def whatsapp_alerts_enabled(self) -> bool:
+        return bool(self.whatsapp_alert_phone and self.callmebot_api_key)
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)

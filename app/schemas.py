@@ -34,3 +34,7 @@ class CartIn(BaseModel):
 
 class ResetIn(BaseModel):
     session_id: str | None = Field(default=None, max_length=64)
+
+
+class StockIn(BaseModel):
+    available: bool

@@ -42,3 +42,7 @@ services:
         sync: false
       - key: EMAIL_DRY_RUN
         value: "false"
+      - key: WHATSAPP_ALERT_PHONE
+        value: "573044667353"
+      - key: CALLMEBOT_API_KEY
+        sync: false

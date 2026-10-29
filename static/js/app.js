@@ -129,6 +129,59 @@ function paymentShort(order) {
   return order?.customer?.payment_label || '—';
 }
 
+function whatsappOrderLink(order) {
+  const base = state.config?.contact?.whatsapp || 'https://wa.me/573044667353';
+  const c = order?.customer || {};
+  const items = (order?.items || []).map((item) => {
+    const mods = (item.modifiers || []).map((m) => m.name).filter(Boolean);
+    const extra = mods.length ? ` (${mods.join(', ')})` : '';
+    return `- ${item.qty}x ${item.name}${extra}: ${money(item.line_total)}`;
+  });
+  const text = [
+    `Hola, acabo de hacer el pedido ${order?.id || ''}.`,
+    `Nombre: ${c.name || ''}`,
+    `Celular: ${c.phone || ''}`,
+    `Dirección: ${c.address || ''}${c.barrio ? ` (${c.barrio})` : ''}`,
+    `Pago: ${paymentShort(order)}`,
+    '',
+    'Productos:',
+    ...items,
+    '',
+    `Total: ${money(order?.total || 0)}`,
+  ].join('\n');
+  return `${base}?text=${encodeURIComponent(text)}`;
+}
+
+function whatsappProofLink(order) {
+  const base = state.config?.contact?.whatsapp || 'https://wa.me/573044667353';
+  const c = order?.customer || {};
+  const items = (order?.items || []).map((item) => {
+    const mods = (item.modifiers || []).map((m) => m.name).filter(Boolean);
+    const extra = mods.length ? ` (${mods.join(', ')})` : '';
+    return `- ${item.qty}x ${item.name}${extra}: ${money(item.line_total)}`;
+  });
+  const payment = paymentShort(order);
+  const number = c.payment === 'llave'
+    ? (state.config?.contact?.llave || '304 466 7353')
+    : (state.config?.contact?.nequi || '304 466 7353');
+  const text = [
+    'COMPROBANTE DE PAGO',
+    `Pedido: ${order?.id || ''}`,
+    `Cliente: ${c.name || ''}`,
+    `Celular: ${c.phone || ''}`,
+    `Dirección: ${c.address || ''}${c.barrio ? ` (${c.barrio})` : ''}`,
+    `Pago: ${payment} al ${number} — ${money(order?.total || 0)}`,
+    '',
+    'Productos:',
+    ...items,
+    '',
+    `Total: ${money(order?.total || 0)}`,
+    '',
+    'Adjunto la captura del pago.'
+  ].join('\n');
+  return `${base}?text=${encodeURIComponent(text)}`;
+}
+
 /* --------------------------------------------------------------------------
    API
    -------------------------------------------------------------------------- */
@@ -416,34 +469,37 @@ function appendProducts(block) {
 
 function productCardHTML(product) {
   const qty = state.cardQty[product.id] || 1;
+  const soldOut = product.available === false;
+  const fee = Number(state.config?.delivery?.base_fee || 0);
   const tags = (product.ingredients || [])
     .slice(0, 3)
     .map((ingredient) => `<span class="product-tag">${escapeHtml(ingredient)}</span>`)
     .join('');
 
   return `
-    <article class="product-card" data-product="${escapeAttr(product.id)}">
+    <article class="product-card${soldOut ? ' sold-out' : ''}" data-product="${escapeAttr(product.id)}">
       <div class="product-media">
         <img src="${escapeAttr(product.image)}" alt="${escapeAttr(product.name)}" width="800" height="600" loading="lazy">
-        <span class="product-badge">${escapeHtml(product.badge)}</span>
+        <span class="product-badge">${soldOut ? 'Agotado' : escapeHtml(product.badge)}</span>
       </div>
       <div class="product-body">
         <div class="product-head">
           <h3>${escapeHtml(product.name)}</h3>
           <span class="product-price">${money(product.price)}</span>
         </div>
+        ${soldOut ? '' : `<small class="product-ship">+ ${money(fee)} domicilio</small>`}
         <p class="product-desc" data-desc>${escapeHtml(product.description)}</p>
         <button class="product-more" type="button" data-more>Ver ingredientes</button>
         <div class="product-tags">${tags}</div>
         <div class="product-actions">
           <div class="stepper" role="group" aria-label="Cantidad de ${escapeAttr(product.name)}">
-            <button type="button" data-step="-1" aria-label="Quitar una unidad">−</button>
+            <button type="button" data-step="-1" aria-label="Quitar una unidad" ${soldOut ? 'disabled' : ''}>−</button>
             <span data-qty aria-live="polite">${qty}</span>
-            <button type="button" data-step="1" aria-label="Agregar una unidad">+</button>
+            <button type="button" data-step="1" aria-label="Agregar una unidad" ${soldOut ? 'disabled' : ''}>+</button>
           </div>
-          <button class="btn-add" type="button" data-add>
+          <button class="btn-add" type="button" data-add ${soldOut ? 'disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Agregar
+            ${soldOut ? 'Agotado' : 'Agregar'}
           </button>
         </div>
       </div>
@@ -474,7 +530,7 @@ function itemsHTML(items) {
 function totalsHTML(summary) {
   const delivery = summary.delivery_fee === 0
     ? (summary.subtotal > 0 ? 'Gratis' : money(0))
-    : money(summary.delivery_fee);
+    : `+ ${money(summary.delivery_fee)}`;
   return `
     <div class="summary-totals">
       <div class="summary-total-row"><span>Subtotal</span><span>${money(summary.subtotal)}</span></div>
@@ -510,30 +566,42 @@ function summaryHTML(summary) {
 function successHTML(order) {
   const contact = state.config?.contact || {};
   const phoneLink = contact.phone_link || `tel:${order.customer?.phone || ''}`;
+  const payment = paymentShort(order);
+  const paymentNumber = order.customer?.payment === 'llave'
+    ? (contact.llave || '304 466 7353')
+    : (contact.nequi || '304 466 7353');
   return `
     <div class="success-card">
       <div class="success-top">
-        <p class="eyebrow">Pedido confirmado</p>
-        <h3>¡Pedido Confirmado!</h3>
+        <p class="eyebrow">Pedido recibido</p>
+        <h3>¡Pedido Recibido!</h3>
         <div class="success-order"><span>N.º</span><code>${escapeHtml(order.id)}</code></div>
       </div>
       <div class="success-body">
         <div class="success-metrics">
           <div class="success-metric"><span>Total</span><strong>${money(order.total)}</strong></div>
-          <div class="success-metric"><span>Pago</span><strong>${escapeHtml(paymentShort(order))}</strong></div>
+          <div class="success-metric"><span>Pago</span><strong>${escapeHtml(payment)}</strong></div>
           <div class="success-metric"><span>Llega en</span><strong>${escapeHtml(order.eta_label || '45 min')}</strong></div>
+        </div>
+        <div class="success-note">
+          <strong>Falta verificar tu pago</strong>
+          <p>Transfiere <b>${money(order.total)}</b> por <b>${escapeHtml(payment)}</b> al <b>${escapeHtml(paymentNumber)}</b> y envía la captura por WhatsApp. Preparamos tu pedido apenas confirmemos el pago.</p>
         </div>
         <div class="summary-items">${itemsHTML(order.items)}</div>
         ${totalsHTML(order)}
         <div class="success-actions">
-          <a class="btn-primary" href="${escapeAttr(phoneLink)}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
-            Llamar al despacho
+          <a class="btn-primary" href="${escapeAttr(whatsappProofLink(order))}" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>
+            Enviar comprobante por WhatsApp
           </a>
           <button class="btn-secondary" type="button" data-open-status="${escapeAttr(order.id)}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             Ver estado
           </button>
+          <a class="btn-secondary" href="${escapeAttr(phoneLink)}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>
+            Llamar al despacho
+          </a>
         </div>
         <button class="btn-ghost btn-block btn-sm" type="button" data-new-order>Hacer otro pedido</button>
       </div>

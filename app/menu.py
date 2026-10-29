@@ -62,7 +62,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Queso costeño gratinado",
         ),
         category="Principales",
-        image="/static/img/suizo.svg",
+        image="/static/img/suizo.jpg",
         badge="Más vendido",
         aliases=(
             "suizo con lomito monteriano",
@@ -94,7 +94,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Queso mozzarella y salsa tártara",
         ),
         category="Principales",
-        image="/static/img/superperro.svg",
+        image="/static/img/superperro.jpg",
         badge="De la casa",
         aliases=(
             "super perro de la casa",
@@ -126,7 +126,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Suero costeño y salsas de la casa",
         ),
         category="Principales",
-        image="/static/img/salchipapa.svg",
+        image="/static/img/salchipapa.jpg",
         badge="Para compartir",
         aliases=(
             "salchipapa salvajada costena",
@@ -155,7 +155,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Papas francesas incluidas",
         ),
         category="Principales",
-        image="/static/img/hamburguesa.svg",
+        image="/static/img/hamburguesa.jpg",
         badge="Favorita",
         aliases=(
             "hamburguesa sinuana especial",
@@ -176,7 +176,7 @@ PRODUCTS: tuple[Product, ...] = (
         description="Bien fría, 400 ml. Elige Postobón para acompañar tu pedido.",
         ingredients=("Botella 400 ml", "Servida bien fría"),
         category="Bebidas",
-        image="/static/img/gaseosa.svg",
+        image="/static/img/gaseosa_postobon.jpg",
         badge="Bien fría",
         aliases=(
             "gaseosa postobon",
@@ -197,7 +197,7 @@ PRODUCTS: tuple[Product, ...] = (
         description="Coca-Cola original bien fría, 400 ml.",
         ingredients=("Botella 400 ml", "Servida bien fría"),
         category="Bebidas",
-        image="/static/img/gaseosa.svg",
+        image="/static/img/gaseosa_coca.jpg",
         badge="Bien fría",
         aliases=(
             "gaseosa coca cola",
@@ -215,7 +215,7 @@ PRODUCTS: tuple[Product, ...] = (
         description="Jugo natural del día preparado en agua. Pregunta por la fruta disponible.",
         ingredients=("Fruta natural del día", "Preparado en agua", "Sin conservantes"),
         category="Bebidas",
-        image="/static/img/jugo.svg",
+        image="/static/img/jugo_agua.jpg",
         badge="Natural",
         aliases=(
             "jugo natural en agua",
@@ -236,7 +236,7 @@ PRODUCTS: tuple[Product, ...] = (
         description="Jugo natural del día preparado en leche. Pregunta por la fruta disponible.",
         ingredients=("Fruta natural del día", "Preparado en leche", "Sin conservantes"),
         category="Bebidas",
-        image="/static/img/jugo.svg",
+        image="/static/img/jugo_leche.jpg",
         badge="Natural",
         aliases=(
             "jugo natural en leche",
@@ -324,7 +324,7 @@ ZONES: tuple[Zone, ...] = (
     Zone(
         id="zona_1",
         name="Zona 1 · Centro y alrededores",
-        fee=4000,
+        fee=2000,
         barrios=(
             "Centro",
             "El Prado",
@@ -338,7 +338,7 @@ ZONES: tuple[Zone, ...] = (
     Zone(
         id="zona_2",
         name="Zona 2 · Norte y oriente",
-        fee=6000,
+        fee=2000,
         barrios=(
             "La Granja",
             "Monteverde",
@@ -362,7 +362,7 @@ ZONES: tuple[Zone, ...] = (
     Zone(
         id="zona_3",
         name="Zona 3 · Periferia y vía nacional",
-        fee=8000,
+        fee=2000,
         barrios=(
             "Los Garzones",
             "La Guajira",

@@ -54,6 +54,7 @@ from .sessions import (
     items_for_order,
     totals_line,
 )
+from .stock import StockStore
 from .utils import money, normalize
 
 def _strip_barrio_from_address(address: str, barrio: str) -> str:
@@ -94,9 +95,12 @@ def quick(label: str, value: str | None = None) -> dict:
 
 
 class ChatEngine:
-    def __init__(self, settings: Settings, store: OrderStore) -> None:
+    def __init__(
+        self, settings: Settings, store: OrderStore, stock: StockStore | None = None
+    ) -> None:
         self.settings = settings
         self.store = store
+        self.stock = stock
 
     # ------------------------------------------------------------------
     # API pública
@@ -237,6 +241,8 @@ class ChatEngine:
             product = PRODUCTS_BY_ID.get(product_id or "")
             if not product:
                 raise ValueError("Producto no encontrado.")
+            if self.stock and not self.stock.is_available(product.id):
+                raise ValueError(f"Por hoy no tenemos {product.name}. Mira el resto del menú.")
             add_to_cart(session.cart, product, qty or 1)
         elif action in {"inc", "dec"}:
             item = find_item(session.cart, uid or "")
@@ -358,6 +364,33 @@ class ChatEngine:
 
     def _add_response(self, session: Session, parsed, start_checkout: bool = False) -> dict:
         before_subtotal = cart_subtotal(session.cart)
+
+        unavailable = []
+        if self.stock:
+            unavailable = [
+                line.product
+                for line in parsed.lines
+                if not self.stock.is_available(line.product.id)
+            ]
+            if unavailable:
+                parsed.lines = [
+                    line
+                    for line in parsed.lines
+                    if self.stock.is_available(line.product.id)
+                ]
+        if unavailable and not parsed.lines:
+            names = ", ".join(dict.fromkeys(product.name for product in unavailable))
+            return self._resp(
+                session,
+                [
+                    text(
+                        f"Por hoy no tenemos **{names}** 😔. "
+                        "¿Te ofrezco otra cosa del menú?"
+                    )
+                ],
+                [quick("Ver el menú"), quick("Recomiéndame algo")],
+            )
+
         added_lines = []
         for line in parsed.lines:
             item = add_to_cart(
@@ -857,10 +890,19 @@ class ChatEngine:
         session.last_order_id = order["id"]
 
         eta = self.settings.prep_minutes + self.settings.delivery_minutes
+        payment = customer.get("payment", "")
+        payment_label = PAYMENT_LABELS.get(payment, payment)
+        payment_number = (
+            self.settings.business_nequi
+            if payment == "nequi"
+            else self.settings.business_llave
+        )
         blocks = [
             text(
-                f"¡Pedido confirmado! 🎉\n\n"
+                f"¡Pedido recibido! 🎉\n\n"
                 f"**{public['id']}** · Total **{money(public['total'])}**\n"
+                f"Pago: **{payment_label}** al **{payment_number}**\n"
+                "Envía la **captura del comprobante** por WhatsApp para verificar tu pago.\n"
                 f"Te contactamos al **{format_phone(customer.get('phone', ''))}** si necesitamos "
                 f"confirmar algo. Llega en aproximadamente **{eta} minutos**."
             ),

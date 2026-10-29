@@ -13,6 +13,7 @@ __pycache__/
 
 # Datos de ejecución
 data/orders.json
+data/stock.json
 data/*.tmp
 data/*.corrupt-*.json
 data/outbox/

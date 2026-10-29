@@ -58,7 +58,7 @@ def test_agrega_y_calcula_totales(setup):
     response = say(engine, session, "Quiero dos suizos y una gaseosa")
     assert response["cart"]["count"] == 3
     assert response["cart"]["subtotal"] == 71700
-    assert response["cart"]["total"] == 77700
+    assert response["cart"]["total"] == 73700
     assert response["stage"] == "browsing"
 
 
@@ -104,12 +104,12 @@ def test_flujo_completo_de_compra(setup):
     response = say(engine, session, "Nequi")
     assert response["stage"] == "checkout_confirm"
     summary = [b for b in response["blocks"] if b["type"] == "summary"][0]
-    assert summary["summary"]["delivery_fee"] == 4000
-    assert summary["summary"]["total"] == 75700
+    assert summary["summary"]["delivery_fee"] == 2000
+    assert summary["summary"]["total"] == 73700
 
     response = say(engine, session, "Confirmar pedido")
     assert response["stage"] == "confirmed"
-    assert response["order"]["total"] == 75700
+    assert response["order"]["total"] == 73700
     assert response["order"]["status"]["key"] == "recibido"
     assert response["_notify_order_id"] == response["order"]["id"]
 
