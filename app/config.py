@@ -93,6 +93,10 @@ class Settings:
     whatsapp_alert_phone: str = _env("WHATSAPP_ALERT_PHONE")
     callmebot_api_key: str = _env("CALLMEBOT_API_KEY")
 
+    # Persistencia opcional del stock (Upstash Redis free)
+    upstash_redis_rest_url: str = _env("UPSTASH_REDIS_REST_URL")
+    upstash_redis_rest_token: str = _env("UPSTASH_REDIS_REST_TOKEN")
+
     # Operación
     admin_token: str = _env("ADMIN_TOKEN")
     allowed_origins: tuple[str, ...] = _env_list("ALLOWED_ORIGINS")

@@ -79,6 +79,7 @@
       background: #fff6e8; border: 1px solid #f0d3ae; border-radius: 12px;
       padding: 10px 12px; font-size: 12px; line-height: 1.5; color: #6b4a22; margin-bottom: 16px;
     }
+    .hint.warn { background: #fdf3f1; border-color: #efc9c2; color: #7a2a1c; }
     .list { display: grid; gap: 10px; }
     .item {
       display: flex; align-items: center; justify-content: space-between; gap: 14px;
@@ -154,6 +155,10 @@
       <div class="hint">
         Marca <b>Agotado</b> y el chatbot dejará de ofrecer ese producto al instante.
         Vuelve a tocar para ponerlo <b>Disponible</b>.
+      </div>
+      <div class="hint warn" id="persistenceHint" hidden>
+        <b>Modo local:</b> en Render gratis el stock se reinicia cuando el servicio se duerme.
+        Conecta Upstash Redis (gratis) para que dure.
       </div>
       <div class="list" id="list" aria-live="polite"></div>
       <p class="footer">Los cambios se guardan en el servidor. En el plan gratis de Render se reinician si el servicio se reinicia.</p>
@@ -234,6 +239,7 @@
       try {
         const data = await api('/api/admin/stock');
         state.items = data.items || [];
+        $('persistenceHint').hidden = data.persistent !== false;
         showPanel();
         render();
       } catch (error) {

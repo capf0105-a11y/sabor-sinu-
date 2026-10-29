@@ -31,7 +31,11 @@ logger = logging.getLogger("saborsinu")
 
 settings.ensure_dirs()
 store = OrderStore(settings.orders_file)
-stock = StockStore(settings.data_dir / "stock.json")
+stock = StockStore(
+    settings.data_dir / "stock.json",
+    settings.upstash_redis_rest_url,
+    settings.upstash_redis_rest_token,
+)
 sessions = SessionStore(settings.session_ttl_minutes)
 engine = ChatEngine(settings, store, stock)
 limiter = RateLimiter(settings.rate_limit_per_minute)
@@ -296,6 +300,7 @@ async def resend_email(order_id: str, background: BackgroundTasks) -> dict:
 @app.get("/api/admin/stock", dependencies=[Depends(require_admin)])
 async def admin_stock() -> dict:
     return {
+        "persistent": stock.remote_enabled,
         "items": [
             {
                 "id": product.id,
