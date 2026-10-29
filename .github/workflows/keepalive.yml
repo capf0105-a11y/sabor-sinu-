@@ -1,0 +1,50 @@
+name: Keepalive Sabor Sinú
+
+on:
+  schedule:
+    # Todos los lunes a las 12:17 UTC (7:17 a. m. en Colombia)
+    - cron: "17 12 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Despertar Render y Upstash
+        run: |
+          curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
+            https://sabor-sinu.onrender.com/api/health
+
+      - name: Mantener el workflow activo
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT \
+            "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable" \
+            || true
+
+      - uses: actions/checkout@v4
+        if: github.event_name == 'schedule'
+
+      - name: Crear commit si el repo lleva 45 días sin actividad
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          days=$(( (now - last) / 86400 ))
+          echo "Días desde el último commit: $days"
+          if [ "$days" -ge 45 ]; then
+            mkdir -p .github
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keepalive.txt
+            git add .github/keepalive.txt
+            git commit -m "chore: keepalive $(date -u +%Y-%m-%d)"
+            git push
+          fi
