@@ -1,0 +1,25 @@
+# Entorno
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Datos de ejecución
+data/orders.json
+data/*.tmp
+data/*.corrupt-*.json
+data/outbox/
+*.log
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

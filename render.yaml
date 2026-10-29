@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: sabor-sinu
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+      - key: ENVIRONMENT
+        value: production
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # Datos de ejemplo: cámbialos en el panel de Render.
+      - key: BUSINESS_NAME
+        value: Sabor Sinú
+      - key: BUSINESS_PHONE
+        value: "+57 304 466 7353"
+      - key: BUSINESS_WHATSAPP
+        value: "573044667353"
+      - key: BUSINESS_NEQUI
+        value: "304 466 7353"
+      - key: BUSINESS_LLAVE
+        value: "304 466 7353"
+      - key: BUSINESS_ADDRESS
+        value: "Calle 34 # 6-12, Centro, Montería, Córdoba"
+      # Secretos: Render los pedirá al crear el servicio (sync: false).
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: EMAIL_DRY_RUN
+        value: "false"

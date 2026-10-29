@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Jugo natural">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12351b"/>
+      <stop offset=".55" stop-color="#15803d"/>
+      <stop offset="1" stop-color="#a3e635"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="42%" r="58%">
+      <stop offset="0" stop-color="#fff" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="leaves" width="70" height="70" patternUnits="userSpaceOnUse">
+      <path d="M10 55C25 40 25 20 10 5" fill="none" stroke="#fff" stroke-opacity=".06" stroke-width="2"/>
+      <path d="M45 65C60 50 60 30 45 15" fill="none" stroke="#fff" stroke-opacity=".05" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#leaves)"/>
+  <circle cx="680" cy="100" r="150" fill="#fff" opacity=".07"/>
+  <circle cx="100" cy="510" r="160" fill="#000" opacity=".10"/>
+  <rect width="800" height="600" fill="url(#glow)"/>
+  <ellipse cx="400" cy="486" rx="248" ry="52" fill="#000" opacity=".22"/>
+  <ellipse cx="400" cy="438" rx="236" ry="64" fill="#fdf6e8" opacity=".94"/>
+  <ellipse cx="400" cy="432" rx="196" ry="48" fill="#eaf7d4" opacity=".8"/>
+  <text x="400" y="425" font-size="250" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji">🧃</text>
+  <text x="400" y="552" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" letter-spacing="6" fill="#fdf6e8" opacity=".92">JUGO NATURAL</text>
+</svg>

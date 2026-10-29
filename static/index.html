@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sabor Sinú · Pide tu antojo costeño en Montería</title>
+  <meta name="description" content="Pide en línea en Sabor Sinú: suizos, hamburguesas, salchipapas y bebidas con domicilio en Montería. Asistente virtual, pago con Nequi o Llave al 304 466 7353.">
+  <meta name="theme-color" content="#f7f1e7" id="metaTheme">
+  <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+  <link rel="apple-touch-icon" href="/static/img/favicon.svg">
+
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('sinu_theme');
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+      } catch (e) { /* sin almacenamiento */ }
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/styles.css?v=20261028e">
+</head>
+<body>
+  <a class="skip-link" href="#composerInput">Saltar al chat</a>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/" aria-label="Sabor Sinú, cocina rápida costeña, inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M42 22c-3-3-9-4-13-2-4 2-6 6-4 9 2 3 8 3 11 5 3 2 3 6 0 8-3 2-8 1-11-1" stroke="#fff8ec" stroke-width="5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="brand-copy">
+            <strong>Sabor Sinú</strong>
+            <span>Cocina rápida costeña</span>
+          </span>
+        </a>
+
+        <div class="topbar-actions">
+          <span class="open-pill"><span class="dot" aria-hidden="true"></span> Abierto ahora</span>
+
+          <button class="icon-btn" id="themeToggle" type="button" aria-label="Cambiar entre modo claro y oscuro" title="Cambiar tema">
+            <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+            </svg>
+            <svg id="iconSun" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+          </button>
+
+          <a class="phone-btn" id="headerPhone" href="tel:+573044667353" aria-label="Llamar al 304 466 7353">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/>
+            </svg>
+            <span>304 466 7353</span>
+          </a>
+
+          <button class="icon-btn cart-trigger" id="cartTrigger" type="button" aria-label="Abrir carrito de compras" aria-controls="cartPanel" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+              <path d="M3 6h18"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            <span class="badge hidden" id="cartBadge">0</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="chat-panel" aria-label="Conversación con Sinu, asistente de Sabor Sinú">
+        <div class="chat-scroll" id="chatScroll">
+          <div class="message-list" id="messageList" role="log" aria-live="polite" aria-relevant="additions text"></div>
+
+          <div class="typing-row hidden" id="typingRow" aria-hidden="true">
+            <div class="avatar">S</div>
+            <div class="typing-bubble">
+              <span></span><span></span><span></span>
+              <em>Escribiendo…</em>
+            </div>
+          </div>
+          <div class="chat-end" id="chatEnd"></div>
+        </div>
+
+        <div class="composer-wrap">
+          <div class="mobile-cart-bar hidden" id="mobileCartBar">
+            <div>
+              <strong id="mobileCartCount">0 artículos</strong>
+              <small id="mobileCartTotal">$0</small>
+            </div>
+            <button type="button" data-open-cart>Ver pedido</button>
+          </div>
+
+          <div class="quick-replies" id="quickReplies"></div>
+
+          <form class="composer" id="composerForm" autocomplete="off">
+            <button class="composer-icon" id="menuShortcut" type="button" aria-label="Ver el menú" title="Ver el menú">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+              </svg>
+            </button>
+
+            <label class="sr-only" for="composerInput">Escribe tu pedido</label>
+            <textarea id="composerInput" rows="1" maxlength="500" placeholder="Escribe tu pedido… ej: dos suizos y una gaseosa" enterkeyhint="send"></textarea>
+
+            <button class="send-btn" id="sendBtn" type="submit" aria-label="Enviar mensaje">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m22 2-7 20-4-9-9-4Z"/>
+                <path d="M22 2 11 13"/>
+              </svg>
+            </button>
+          </form>
+          <p class="composer-hint">Enter envía · Shift + Enter salto de línea · Pagos: Nequi o Llave al 304 466 7353</p>
+        </div>
+      </section>
+
+      <aside class="cart-panel" id="cartPanel" aria-label="Carrito de compras">
+        <div class="cart-head">
+          <div>
+            <p class="eyebrow">Tu pedido</p>
+            <h2>Carrito <span id="cartCountLabel">0</span></h2>
+          </div>
+          <button class="icon-btn cart-close" id="cartClose" type="button" aria-label="Cerrar carrito">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="cart-body" id="cartBody">
+          <div class="cart-empty">
+            <div class="cart-empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+                <path d="M3 6h18"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </div>
+            <h3>Tu carrito está vacío</h3>
+            <p>Pídele a Sinu lo que se te antoje o explora el menú.</p>
+            <button class="btn-secondary btn-sm" type="button" data-quick="Ver el menú">Explorar el menú</button>
+          </div>
+        </div>
+
+        <div class="cart-foot" id="cartFoot"></div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay" hidden></div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+  <div class="modal" id="statusModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="statusTitle">
+      <div class="modal-head">
+        <h2 id="statusTitle">Estado del pedido</h2>
+        <button class="icon-btn" type="button" data-close-modal aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="statusContent"></div>
+    </div>
+  </div>
+
+  <noscript>
+    <div style="position:fixed;inset:0;z-index:200;background:#f7f1e7;color:#1c1917;display:grid;place-items:center;padding:24px;text-align:center;font-family:system-ui,sans-serif;">
+      <div>
+        <h1 style="font-size:24px;margin-bottom:8px;">Activa JavaScript para pedir en línea</h1>
+        <p>También puedes llamarnos al <a href="tel:+573044667353" style="color:#b83f1c;">+57 304 466 7353</a>.</p>
+      </div>
+    </div>
+  </noscript>
+
+  <script src="/static/js/app.js?v=20261028e" defer></script>
+</body>
+</html>
