@@ -561,10 +561,35 @@ class ChatEngine:
     # Checkout
     # ------------------------------------------------------------------
 
+    def _drop_sold_out(self, session: Session) -> list[str]:
+        """Quita del carrito lo que el vendedor marcó agotado y devuelve sus nombres."""
+        if not self.stock:
+            return []
+        removed = [
+            item for item in session.cart if not self.stock.is_available(item.product_id)
+        ]
+        if not removed:
+            return []
+        session.cart = [
+            item for item in session.cart if self.stock.is_available(item.product_id)
+        ]
+        return list(dict.fromkeys(item.product.name for item in removed))
+
     def _begin_checkout(self, session: Session, prefix_blocks: list[dict] | None = None) -> dict:
         session.stage = "checkout_name"
         session.customer = {}
         blocks = list(prefix_blocks or [])
+        sold_out = self._drop_sold_out(session)
+        if sold_out:
+            blocks.append(
+                text(
+                    "Uy, se agotó **" + ", ".join(sold_out) + "** y lo quité de tu pedido. "
+                    "Puedes elegir otra cosa del menú."
+                )
+            )
+        if not session.cart:
+            session.stage = "browsing"
+            return self._empty_cart_reply(session)
         blocks.append(
             text(
                 f"Perfecto, cerramos tu pedido 🧾\n\n"
@@ -870,6 +895,19 @@ class ChatEngine:
         }
 
     def _confirm_order(self, session: Session) -> dict:
+        sold_out = self._drop_sold_out(session)
+        if sold_out:
+            session.stage = "browsing"
+            return self._resp(
+                session,
+                [
+                    text(
+                        "Uy, se agotó **" + ", ".join(sold_out) + "** y lo quité de tu pedido. "
+                        "Revisa tu carrito y confirma de nuevo."
+                    )
+                ],
+                [quick("Ver el menú"), quick("Finalizar pedido")],
+            )
         if not session.cart:
             return self._empty_cart_reply(session)
         totals = cart_totals(session.cart, session.customer.get("barrio"), self.settings)
