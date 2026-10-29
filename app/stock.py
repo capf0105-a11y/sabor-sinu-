@@ -30,11 +30,17 @@ class StockStore:
         self._remote_url = (remote_url or "").rstrip("/")
         self._remote_token = remote_token or ""
         self._remote_key = "saborsinu:stock"
+        self._remote_ok = False
         self._load()
 
     @property
     def remote_enabled(self) -> bool:
         return bool(self._remote_url and self._remote_token)
+
+    @property
+    def persistent(self) -> bool:
+        """True solo si Upstash está configurado y respondió bien."""
+        return self.remote_enabled and self._remote_ok
 
     # ------------------------------------------------------------------
     # Persistencia
@@ -44,6 +50,7 @@ class StockStore:
         if self.remote_enabled:
             try:
                 raw = self._remote_command("GET", self._remote_key)
+                self._remote_ok = True
                 if raw:
                     data = json.loads(raw)
                     sold = data.get("sold_out", [])
@@ -106,7 +113,9 @@ class StockStore:
                 self._remote_key,
                 json.dumps({"sold_out": sorted(self._sold_out)}),
             )
+            self._remote_ok = True
         except Exception as exc:  # pragma: no cover - depende de red
+            self._remote_ok = False
             logger.warning("No se pudo guardar el stock en Upstash: %s", exc)
 
     # ------------------------------------------------------------------

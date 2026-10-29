@@ -300,7 +300,7 @@ async def resend_email(order_id: str, background: BackgroundTasks) -> dict:
 @app.get("/api/admin/stock", dependencies=[Depends(require_admin)])
 async def admin_stock() -> dict:
     return {
-        "persistent": stock.remote_enabled,
+        "persistent": stock.persistent,
         "items": [
             {
                 "id": product.id,
