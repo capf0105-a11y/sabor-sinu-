@@ -187,7 +187,27 @@ function whatsappProofLink(order) {
    -------------------------------------------------------------------------- */
 
 async function api(path, options = {}) {
-  const { method = 'GET', body, timeout = 20000 } = options;
+  const {
+    method = 'GET',
+    body,
+    timeout = 45000,
+    retries = 0,
+    retryDelay = 2500
+  } = options;
+  let lastError = null;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await apiOnce(path, { method, body, timeout });
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries) break;
+      await wait(retryDelay * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+async function apiOnce(path, { method, body, timeout }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
@@ -228,11 +248,21 @@ async function init() {
   updateThemeUI();
   autoResize();
 
+  els.messageList.innerHTML = '<div class="system-note" id="bootNote">Conectando con la tienda…</div>';
+  const slowTimer = setTimeout(() => {
+    const note = document.getElementById('bootNote');
+    if (note) note.textContent = 'Despertando la tienda… esto puede tardar hasta un minuto.';
+  }, 4000);
+
   try {
-    const [config, menu] = await Promise.all([api('/config'), api('/menu')]);
+    const [config, menu] = await Promise.all([
+      api('/config', { timeout: 60000, retries: 2, retryDelay: 4000 }),
+      api('/menu', { timeout: 60000, retries: 2, retryDelay: 4000 })
+    ]);
     state.config = config;
     state.menu = menu.items || [];
     state.menuById = Object.fromEntries(state.menu.map((item) => [item.id, item]));
+    els.messageList.innerHTML = '';
     applyConfig();
     renderWelcome();
     renderCart();
@@ -240,6 +270,8 @@ async function init() {
     if (!els.quickReplies.children.length) setQuickReplies(defaultQuickReplies());
   } catch (error) {
     renderFatal(error);
+  } finally {
+    clearTimeout(slowTimer);
   }
 }
 

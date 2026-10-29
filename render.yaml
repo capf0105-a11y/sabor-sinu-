@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*" --no-access-log --timeout-keep-alive 5
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
@@ -12,6 +12,9 @@ services:
         value: 3.13.7
       - key: ENVIRONMENT
         value: production
+      # Límite por IP; con proxy headers cada cliente tiene su propio cupo.
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "120"
       - key: ADMIN_TOKEN
         generateValue: true
       # Ruta privada del panel. Sin esto, queda en /admin.

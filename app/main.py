@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -68,6 +69,10 @@ if settings.allowed_origins:
         allow_headers=["Content-Type", "X-Admin-Token"],
     )
 
+# Comprime respuestas grandes (HTML, CSS, JS y JSON) para gastar menos ancho
+# de banda y responder más rápido en conexiones móviles.
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 
 @app.middleware("http")
 async def guard_requests(request: Request, call_next):
@@ -82,7 +87,15 @@ async def guard_requests(request: Request, call_next):
             )
     response = await call_next(request)
     if path.startswith("/static/"):
-        response.headers.setdefault("Cache-Control", "public, max-age=3600")
+        if path.endswith((".jpg", ".jpeg", ".png", ".webp", ".svg", ".ico")):
+            response.headers.setdefault("Cache-Control", "public, max-age=86400")
+        else:
+            response.headers.setdefault("Cache-Control", "public, max-age=3600")
+    elif path == "/api/config":
+        # La configuración cambia poco; 5 minutos de caché alivia visitas repetidas.
+        response.headers.setdefault("Cache-Control", "public, max-age=300")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return response
 
 
