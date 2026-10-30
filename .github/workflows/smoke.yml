@@ -1,0 +1,60 @@
+name: Smoke test producción
+
+on:
+  schedule:
+    # Cada 2 horas: revisa que la tienda real siga vendiendo bien.
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: smoke-produccion
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Probar el sitio en vivo
+        env:
+          BASE_URL: https://sabor-sinu.onrender.com
+          EXPECTED_COMMIT: ${{ github.sha }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          ADMIN_PANEL_PATH: /panel-vendedor-sinu-7k3p9x
+        run: python scripts/smoke_test.py
+
+      - name: Crear issue si el sitio falla
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("🚨 Smoke test de producción falló")) | .number' \
+            | head -n 1 || true)
+          if [ -z "$existing" ]; then
+            gh issue create \
+              --title "🚨 Smoke test de producción falló" \
+              --body "El sitio en vivo falló una comprobación automática. Revisa el run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+
+      - name: Cerrar issue si el sitio volvió a funcionar
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("🚨 Smoke test de producción falló")) | .number' \
+            | head -n 1 || true)
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "El smoke test volvió a pasar."
+          fi

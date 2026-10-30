@@ -1,0 +1,58 @@
+name: Pruebas automáticas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Todos los días a las 09:00 UTC (04:00 a. m. en Colombia).
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar pruebas
+        run: python -m pytest -q
+
+      - name: Crear issue si fallan las pruebas programadas
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("🧪 Pruebas automáticas fallaron")) | .number' \
+            | head -n 1 || true)
+          if [ -z "$existing" ]; then
+            gh issue create \
+              --title "🧪 Pruebas automáticas fallaron" \
+              --body "Las pruebas programadas fallaron. Revisa el run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi
+
+      - name: Cerrar issue si las pruebas volvieron a pasar
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title | startswith("🧪 Pruebas automáticas fallaron")) | .number' \
+            | head -n 1 || true)
+          if [ -n "$existing" ]; then
+            gh issue close "$existing" --comment "Las pruebas automáticas volvieron a pasar."
+          fi

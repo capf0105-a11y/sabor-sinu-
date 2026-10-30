@@ -186,13 +186,38 @@ El identificador de sesión viaja en la respuesta y en `localStorage`; el carrit
 
 ---
 
-## 6. Pruebas
+## 6. Pruebas y monitoreo automático
+
+### Pruebas locales
 
 ```bash
 python -m pytest -q
 ```
 
-Cobertura actual: **22 pruebas** de NLP, totales, flujo completo de checkout, correo en modo demo, autenticación admin, rate limit y API.
+Cobertura actual: **24 pruebas** de NLP, totales, flujo completo de checkout, correo en modo demo, autenticación admin, rate limit y API.
+
+### Smoke test contra producción
+
+```bash
+python scripts/smoke_test.py
+```
+
+Comprueba el sitio real: salud, commit desplegado, precios, domicilio de $2.000, Nequi/Llave al 304 466 7353, fotos JPG, panel privado, contraseña, persistencia del stock, caché y GZip. Si defines `ADMIN_TOKEN`, también prueba el panel autenticado:
+
+```bash
+$env:ADMIN_TOKEN="tu-contraseña"   # PowerShell
+python scripts/smoke_test.py
+```
+
+### Automatización en GitHub Actions
+
+- `.github/workflows/ci.yml`: ejecuta `pytest` en cada push, en cada pull request y todos los días a las 09:00 UTC. Si falla una ejecución programada, abre un issue.
+- `.github/workflows/smoke.yml`: revisa la tienda real cada 2 horas. Si algo falla, abre un issue; cuando vuelve a funcionar, lo cierra solo.
+- `.github/workflows/keepalive.yml`: mantiene Render despierto y evita que GitHub desactive los workflows por inactividad.
+
+Para que el smoke test revise el stock autenticado, crea el secreto **`ADMIN_TOKEN`** en GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Usa la misma contraseña del panel. Nunca la escribas en el código ni en el README.
+
+Los issues de GitHub envían correo al dueño del repositorio. Activa las notificaciones de GitHub para enterarte de un fallo sin tener que revisar la página.
 
 ---
 
@@ -306,7 +331,13 @@ sabor-sinu/
 │  ├─ index.html
 │  ├─ css/styles.css
 │  ├─ js/app.js
-│  └─ img/*.svg
+│  └─ img/*.jpg
+├─ scripts/
+│  └─ smoke_test.py      pruebas automáticas contra producción
+├─ .github/workflows/
+│  ├─ ci.yml             pytest en cada push y a diario
+│  ├─ smoke.yml          revisión de la tienda real cada 2 horas
+│  └─ keepalive.yml      mantiene Render y GitHub activos
 ├─ tests/
 │  ├─ conftest.py
 │  ├─ test_engine.py

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -183,6 +184,7 @@ async def health() -> dict:
         "orders": store.count(),
         "email_mode": "smtp" if settings.email_configured else "dry_run",
         "environment": settings.environment,
+        "commit": os.getenv("RENDER_GIT_COMMIT", "dev"),
     }
 
 

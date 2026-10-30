@@ -20,11 +20,14 @@ def test_home_y_salud():
     assert health.status_code == 200
     assert health.json()["status"] == "ok"
     assert health.json()["email_mode"] == "dry_run"
+    assert health.json()["commit"]
     assert client.get("/health").json()["status"] == "ok"
 
 
 def test_config_y_menu():
-    config = client.get("/api/config").json()
+    config_response = client.get("/api/config")
+    assert "max-age=300" in config_response.headers["Cache-Control"]
+    config = config_response.json()
     assert config["brand"]["name"] == settings.business_name
     assert config["delivery"]["free_from"] == settings.free_delivery_from
     assert len(config["delivery"]["zones"]) == 3
