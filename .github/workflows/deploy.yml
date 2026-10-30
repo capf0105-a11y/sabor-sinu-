@@ -1,0 +1,29 @@
+name: Desplegar en Render
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-render
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Disparar despliegue en Render
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::error::Falta el secreto RENDER_DEPLOY_HOOK en GitHub."
+            exit 1
+          fi
+          curl -fsS --retry 3 --retry-delay 10 --max-time 30 \
+            -X POST "$RENDER_DEPLOY_HOOK"

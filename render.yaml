@@ -6,7 +6,9 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*" --no-access-log --timeout-keep-alive 5
     healthCheckPath: /api/health
-    autoDeploy: true
+    # Los despliegues los dispara .github/workflows/deploy.yml con un Deploy
+    # Hook. Así no dependemos del webhook automático de Render, que falló.
+    autoDeploy: false
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.7
