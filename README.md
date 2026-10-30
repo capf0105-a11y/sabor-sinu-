@@ -213,9 +213,15 @@ python scripts/smoke_test.py
 
 - `.github/workflows/ci.yml`: ejecuta `pytest` en cada push, en cada pull request y todos los días a las 09:00 UTC. Si falla una ejecución programada, abre un issue.
 - `.github/workflows/smoke.yml`: revisa la tienda real cada 2 horas. Si algo falla, abre un issue; cuando vuelve a funcionar, lo cierra solo.
+- `.github/workflows/deploy.yml`: dispara un despliegue en Render después de cada push a `main`, usando el Deploy Hook. Así no dependemos del webhook automático de Render.
 - `.github/workflows/keepalive.yml`: mantiene Render despierto y evita que GitHub desactive los workflows por inactividad.
 
-Para que el smoke test revise el stock autenticado, crea el secreto **`ADMIN_TOKEN`** en GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Usa la misma contraseña del panel. Nunca la escribas en el código ni en el README.
+Secretos necesarios en GitHub (**Settings → Secrets and variables → Actions**):
+
+- **`ADMIN_TOKEN`**: la misma contraseña del panel. Permite que el smoke test revise el stock autenticado.
+- **`RENDER_DEPLOY_HOOK`**: la URL del Deploy Hook de Render. Permite que cada push a `main` se despliegue solo.
+
+Nunca escribas estos valores en el código ni en el README.
 
 Los issues de GitHub envían correo al dueño del repositorio. Activa las notificaciones de GitHub para enterarte de un fallo sin tener que revisar la página.
 
@@ -229,6 +235,9 @@ Los issues de GitHub envían correo al dueño del repositorio. Activa las notifi
 2. En Render: **New → Blueprint** y selecciona el repositorio. Render lee `render.yaml`.
 3. Completa las variables secretas de SMTP (o déjalas vacías para modo demo).
 4. Deploy. Obtendrás un enlace independiente tipo `https://sabor-sinu.onrender.com`.
+5. Copia el **Deploy Hook** del servicio en Render y guárdalo como secreto `RENDER_DEPLOY_HOOK` en GitHub. El workflow `.github/workflows/deploy.yml` lo usa para desplegar cada push a `main`.
+
+`render.yaml` deja `autoDeploy: false` a propósito: el despliegue lo dispara GitHub Actions, no el webhook de Render. Si prefieres el auto-deploy nativo de Render, cambia ese valor y elimina `deploy.yml`.
 
 También puedes crear un **Web Service** manual:
 
@@ -337,6 +346,7 @@ sabor-sinu/
 ├─ .github/workflows/
 │  ├─ ci.yml             pytest en cada push y a diario
 │  ├─ smoke.yml          revisión de la tienda real cada 2 horas
+│  ├─ deploy.yml         despliegue automático en Render
 │  └─ keepalive.yml      mantiene Render y GitHub activos
 ├─ tests/
 │  ├─ conftest.py
