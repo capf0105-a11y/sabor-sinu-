@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# Solo para pruebas y CI. No se instalan en producción.
+pytest==9.2.0
+httpx==0.28.1
