@@ -29,7 +29,17 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Ejecutar pruebas
-        run: python -m pytest -q
+        run: |
+          set -o pipefail
+          python -m pytest -q --tb=short -ra 2>&1 | tee pytest.log
+
+      - name: Publicar detalle si fallan las pruebas
+        if: failure()
+        run: |
+          echo "## ❌ Las pruebas fallaron" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 120 pytest.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Crear issue si fallan las pruebas programadas
         if: failure() && github.event_name == 'schedule'
