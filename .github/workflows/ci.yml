@@ -30,16 +30,20 @@ jobs:
 
       - name: Ejecutar pruebas
         run: |
-          set -o pipefail
-          python -m pytest -q --tb=short -ra 2>&1 | tee pytest.log
-
-      - name: Publicar detalle si fallan las pruebas
-        if: failure()
-        run: |
-          echo "## ❌ Las pruebas fallaron" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -n 120 pytest.log >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          python -m pytest -q --tb=short -ra > pytest.log 2>&1
+          status=$?
+          cat pytest.log
+          if [ "$status" -ne 0 ]; then
+            grep -E "^FAILED|^ERROR" pytest.log | head -n 20 | while IFS= read -r line; do
+              echo "::error title=Prueba fallida::$line"
+            done
+            echo "## ❌ Las pruebas fallaron" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 120 pytest.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
 
       - name: Crear issue si fallan las pruebas programadas
         if: failure() && github.event_name == 'schedule'
