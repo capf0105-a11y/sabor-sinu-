@@ -38,3 +38,7 @@ class ResetIn(BaseModel):
 
 class StockIn(BaseModel):
     available: bool
+
+
+class AdminLoginIn(BaseModel):
+    password: str = Field(min_length=1, max_length=256)

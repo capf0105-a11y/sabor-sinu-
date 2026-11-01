@@ -20,7 +20,7 @@ import urllib.request
 BASE_URL = os.getenv("BASE_URL", "https://sabor-sinu.onrender.com").rstrip("/")
 EXPECTED_COMMIT = os.getenv("EXPECTED_COMMIT", "").strip()
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
-PANEL_PATH = os.getenv("ADMIN_PANEL_PATH", "/panel-vendedor-sinu-7k3p9x")
+PANEL_PATH = os.getenv("ADMIN_PANEL_PATH", "").strip()
 TIMEOUT = float(os.getenv("SMOKE_TIMEOUT", "120"))
 
 FAILURES: list[str] = []
@@ -182,11 +182,52 @@ def main() -> int:
     html = body.decode("utf-8", errors="replace")
     check("la página carga el chatbot", "app.js" in html and "Sabor Sin" in html)
     check("la página no se cachea", "no-store" in headers.get("cache-control", ""), headers.get("cache-control", ""))
+    check(
+        "la página trae Content-Security-Policy",
+        "default-src 'self'" in headers.get("content-security-policy", ""),
+        headers.get("content-security-policy", ""),
+    )
+    check(
+        "la página bloquea iframes",
+        headers.get("x-frame-options") == "DENY",
+        headers.get("x-frame-options", ""),
+    )
+    check(
+        "la página limita permisos del navegador",
+        "camera=()" in headers.get("permissions-policy", ""),
+        headers.get("permissions-policy", ""),
+    )
+    if BASE_URL.startswith("https://"):
+        check(
+            "HSTS está activo",
+            "max-age=31536000" in headers.get("strict-transport-security", ""),
+            headers.get("strict-transport-security", ""),
+        )
 
-    status, headers, body, _ = fetch(PANEL_PATH)
-    check(f"GET {PANEL_PATH} responde 200", status == 200, f"status={status}")
-    check("el panel no se indexa", "noindex" in headers.get("x-robots-tag", ""), headers.get("x-robots-tag", ""))
-    check("el panel muestra el login", "Panel de stock" in body.decode("utf-8", errors="replace"))
+    if health.get("environment") == "production":
+        status, _, _, _ = fetch("/docs")
+        check("la documentación de la API no está expuesta", status == 404, f"status={status}")
+        status, _, _, _ = fetch("/openapi.json")
+        check("el esquema OpenAPI no está expuesto", status == 404, f"status={status}")
+
+    if PANEL_PATH:
+        status, headers, body, _ = fetch(PANEL_PATH)
+        check(f"GET {PANEL_PATH} responde 200", status == 200, f"status={status}")
+        check("el panel no se indexa", "noindex" in headers.get("x-robots-tag", ""), headers.get("x-robots-tag", ""))
+        check("el panel muestra el login", "Panel de stock" in body.decode("utf-8", errors="replace"))
+        check(
+            "el panel usa CSP estricta",
+            "default-src 'none'" in headers.get("content-security-policy", ""),
+            headers.get("content-security-policy", ""),
+        )
+        panel_html = body.decode("utf-8", errors="replace")
+        check(
+            "el panel no guarda la contraseña en el navegador",
+            "sessionStorage" not in panel_html and "X-Admin-Token" not in panel_html,
+            "el HTML del panel expone almacenamiento o el token",
+        )
+    else:
+        print("[SKIP] No hay ADMIN_PANEL_PATH; no se probó la página privada del panel.")
 
     status, _, _, _ = fetch("/admin")
     check("GET /admin ya no existe", status == 404, f"status={status}")

@@ -30,7 +30,7 @@ jobs:
           BASE_URL: https://sabor-sinu.onrender.com
           EXPECTED_COMMIT: ${{ github.sha }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-          ADMIN_PANEL_PATH: /panel-vendedor-sinu-7k3p9x
+          ADMIN_PANEL_PATH: ${{ secrets.ADMIN_PANEL_PATH }}
         run: python scripts/smoke_test.py
 
       - name: Crear issue si el sitio falla

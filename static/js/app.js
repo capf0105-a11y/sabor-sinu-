@@ -59,6 +59,18 @@ const state = {
   clearTimer: null
 };
 
+function setSplashText(message) {
+  const target = document.getElementById('appSplashText');
+  if (target) target.textContent = message;
+}
+
+function hideSplash() {
+  const splash = document.getElementById('appSplash');
+  if (!splash || splash.classList.contains('is-hidden')) return;
+  splash.classList.add('is-hidden');
+  window.setTimeout(() => splash.remove(), 400);
+}
+
 /* --------------------------------------------------------------------------
    Utilidades
    -------------------------------------------------------------------------- */
@@ -252,6 +264,7 @@ async function init() {
   const slowTimer = setTimeout(() => {
     const note = document.getElementById('bootNote');
     if (note) note.textContent = 'Despertando la tienda… esto puede tardar hasta un minuto.';
+    setSplashText('Estamos encendiendo la cocina…');
   }, 4000);
 
   try {
@@ -272,6 +285,7 @@ async function init() {
     renderFatal(error);
   } finally {
     clearTimeout(slowTimer);
+    window.setTimeout(hideSplash, 180);
   }
 }
 

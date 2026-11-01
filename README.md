@@ -194,7 +194,7 @@ El identificador de sesión viaja en la respuesta y en `localStorage`; el carrit
 python -m pytest -q
 ```
 
-Cobertura actual: **24 pruebas** de NLP, totales, flujo completo de checkout, correo en modo demo, autenticación admin, rate limit y API.
+Cobertura actual: **28 pruebas** de NLP, totales, flujo completo de checkout, correo en modo demo, autenticación admin con cookie, bloqueo de fuerza bruta por contraseña y por token, rechazo de origen externo, cabeceras de seguridad, rate limit y API.
 
 ### Smoke test contra producción
 
@@ -202,23 +202,27 @@ Cobertura actual: **24 pruebas** de NLP, totales, flujo completo de checkout, co
 python scripts/smoke_test.py
 ```
 
-Comprueba el sitio real: salud, commit desplegado, precios, domicilio de $2.000, Nequi/Llave al 304 466 7353, fotos JPG, panel privado, contraseña, persistencia del stock, caché y GZip. Si defines `ADMIN_TOKEN`, también prueba el panel autenticado:
+Comprueba el sitio real: salud, commit desplegado, precios, domicilio de $2.000, Nequi/Llave al 304 466 7353, fotos JPG, panel privado, contraseña, persistencia del stock, caché, GZip y cabeceras de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy). También verifica que `/docs` y `/openapi.json` no estén expuestos en producción. Si defines `ADMIN_TOKEN` y `ADMIN_PANEL_PATH`, prueba el panel autenticado:
 
 ```bash
-$env:ADMIN_TOKEN="tu-contraseña"   # PowerShell
+$env:ADMIN_TOKEN="tu-contraseña"          # PowerShell
+$env:ADMIN_PANEL_PATH="/tu-ruta-privada"  # no la publiques
 python scripts/smoke_test.py
 ```
+
+Si no defines `ADMIN_PANEL_PATH`, el smoke test omite la página privada del panel y sigue revisando el resto del sitio.
 
 ### Automatización en GitHub Actions
 
 - `.github/workflows/ci.yml`: ejecuta `pytest` en cada push, en cada pull request y todos los días a las 09:00 UTC. Si falla una ejecución programada, abre un issue.
 - `.github/workflows/smoke.yml`: revisa la tienda real cada 2 horas. Si algo falla, abre un issue; cuando vuelve a funcionar, lo cierra solo.
 - `.github/workflows/deploy.yml`: dispara un despliegue en Render después de cada push a `main`, usando el Deploy Hook. Así no dependemos del webhook automático de Render.
-- `.github/workflows/keepalive.yml`: mantiene Render despierto y evita que GitHub desactive los workflows por inactividad.
+- `.github/workflows/keepalive.yml`: hace ping a Render cada 5 minutos con dos horarios desfasados y evita que GitHub desactive los workflows por inactividad. Render gratis se duerme tras 15 minutos sin tráfico; si GitHub retrasa un cron, el segundo horario reduce la espera. Para **cero** pantallas de espera haría falta un plan pago de Render o un monitor externo que haga ping cada minuto.
 
 Secretos necesarios en GitHub (**Settings → Secrets and variables → Actions**):
 
 - **`ADMIN_TOKEN`**: la misma contraseña del panel. Permite que el smoke test revise el stock autenticado.
+- **`ADMIN_PANEL_PATH`**: la ruta privada del panel (por ejemplo, la que ya usas). Se guarda como secreto para que el smoke test la revise sin publicarla en el repositorio. Si no la defines, esa comprobación se omite.
 - **`RENDER_DEPLOY_HOOK`**: la URL del Deploy Hook de Render. Permite que cada push a `main` se despliegue solo.
 
 Nunca escribas estos valores en el código ni en el README.
@@ -245,7 +249,7 @@ También puedes crear un **Web Service** manual:
 - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - Health check: `/api/health`
 
-> El plan gratis de Render duerme el servicio tras un periodo de inactividad; el primer acceso puede tardar unos segundos. El disco es efímero: para conservar pedidos entre despliegues, monta un disco persistente y apunta `DATA_DIR`, `ORDERS_FILE` y `OUTBOX_DIR` allí (o migra a una base de datos).
+> El plan gratis de Render duerme el servicio tras 15 minutos sin tráfico. El workflow `keepalive.yml` hace ping cada 5 minutos para mantenerlo despierto, pero GitHub puede retrasar los cron. Mientras Render despierta, la tienda muestra una pantalla de arranque clara con el logo de Sabor Sinú (no una pantalla negra) y un botón de reintento si tarda demasiado. Para eliminar por completo la espera necesitas un plan pago de Render o un monitor externo que haga ping cada minuto. El disco es efímero: para conservar pedidos entre despliegues, monta un disco persistente y apunta `DATA_DIR`, `ORDERS_FILE` y `OUTBOX_DIR` allí (o migra a una base de datos).
 
 ### Railway / Heroku
 
@@ -311,13 +315,19 @@ Para producción con varios procesos o reinicios frecuentes, reemplaza `SessionS
 
 ## 10. Seguridad y límites
 
-- Rate limit por IP, límite de caracteres por mensaje y validación de datos en servidor.
+- Rate limit por IP, límite de tamaño de solicitud, límite de caracteres por mensaje y validación de datos en servidor.
 - Todo el contenido generado por el usuario se escapa antes de insertarse en HTML.
 - No se solicitan ni almacenan datos de tarjetas; el pago es por Nequi o Llave.
 - Define un `ADMIN_TOKEN` largo y aleatorio en producción.
+- El panel ya no guarda la contraseña en `localStorage` ni en `sessionStorage`: el login crea una cookie **HttpOnly, Secure y SameSite=Strict** que dura 8 horas. La contraseña se envía una sola vez por HTTPS.
+- Tras **5 intentos fallidos** desde una misma IP, el login queda bloqueado **15 minutos**. Los intentos correctos no cuentan.
+- Opcional: define `ADMIN_ALLOWED_IPS` con una lista de IPs separadas por comas para que el panel solo abra desde esas direcciones.
+- Cabeceras de seguridad: CSP estricta en el panel, CSP pública para la tienda, HSTS, `X-Frame-Options: DENY`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` y `Cross-Origin-Resource-Policy`.
+- La documentación automática de FastAPI (`/docs`, `/redoc`, `/openapi.json`) está deshabilitada en producción.
+- Las mutaciones del panel verifican el origen de la petición para evitar CSRF.
 - Sirve siempre por HTTPS.
 - El NLP es **basado en reglas**, no un modelo generativo: es rápido, predecible y sin costo por mensaje, pero no mantiene conversaciones abiertas fuera del flujo de pedido.
-- No incluye pasarela de pagos ni panel visual de cocina; el panel admin es una API protegida por token.
+- No incluye pasarela de pagos ni panel visual de cocina; el panel admin es una API protegida por contraseña y sesión.
 
 ---
 

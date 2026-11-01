@@ -85,5 +85,54 @@ class RateLimiter:
             return True
 
 
+class LoginGuard:
+    """Bloquea intentos de contraseña fallidos por IP.
+
+    No cuenta los accesos correctos: el vendedor puede entrar varias veces sin
+    quedar bloqueado. Tras ``max_attempts`` fallos en ``window_seconds``, la IP
+    queda bloqueada durante ``block_seconds``.
+    """
+
+    def __init__(
+        self,
+        max_attempts: int = 5,
+        window_seconds: int = 900,
+        block_seconds: int = 900,
+    ) -> None:
+        self.max_attempts = max(1, max_attempts)
+        self.window_seconds = max(60, window_seconds)
+        self.block_seconds = max(60, block_seconds)
+        self._failures: dict[str, deque[float]] = defaultdict(deque)
+        self._blocked_until: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def is_blocked(self, key: str) -> bool:
+        now = time.time()
+        with self._lock:
+            until = self._blocked_until.get(key)
+            if not until:
+                return False
+            if until > now:
+                return True
+            self._blocked_until.pop(key, None)
+            return False
+
+    def register_failure(self, key: str) -> None:
+        now = time.time()
+        with self._lock:
+            bucket = self._failures[key]
+            while bucket and now - bucket[0] > self.window_seconds:
+                bucket.popleft()
+            bucket.append(now)
+            if len(bucket) >= self.max_attempts:
+                self._blocked_until[key] = now + self.block_seconds
+                bucket.clear()
+
+    def reset(self, key: str) -> None:
+        with self._lock:
+            self._failures.pop(key, None)
+            self._blocked_until.pop(key, None)
+
+
 def clamp_int(value: int, low: int, high: int) -> int:
     return max(low, min(high, value))

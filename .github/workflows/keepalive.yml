@@ -2,8 +2,11 @@ name: Keepalive Sabor Sinú
 
 on:
   schedule:
-    # Cada 10 minutos: mantiene Render despierto y Upstash activo.
-    - cron: "*/10 * * * *"
+    # Cada 5 minutos: Render gratis duerme tras 15 min sin tráfico.
+    - cron: "*/5 * * * *"
+    # Segundo horario desfasado: si GitHub retrasa un cron, el otro despierta
+    # el servicio. Juntos reducen mucho las pantallas de espera.
+    - cron: "2-59/5 * * * *"
     # Todos los lunes a las 12:17 UTC (7:17 a. m. en Colombia):
     # revisa la actividad del repositorio y lo mantiene habilitado.
     - cron: "17 12 * * 1"
@@ -16,6 +19,7 @@ permissions:
 jobs:
   keepalive:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Despertar Render y Upstash
         run: |

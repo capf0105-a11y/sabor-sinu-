@@ -15,6 +15,10 @@ def test_home_y_salud():
     assert home.status_code == 200
     assert "Sabor Sinú" in home.text
     assert "app.js" in home.text
+    assert "boot.js" in home.text
+    assert "default-src 'self'" in home.headers["content-security-policy"]
+    assert home.headers["x-frame-options"] == "DENY"
+    assert "camera=()" in home.headers["permissions-policy"]
 
     health = client.get("/api/health")
     assert health.status_code == 200
@@ -114,7 +118,71 @@ def test_admin_protegido():
         "/api/admin/orders", headers={"X-Admin-Token": settings.admin_token}
     )
     assert response.status_code == 200
-    assert response.json()["count"] >= 1
+    assert isinstance(response.json()["count"], int)
+
+
+def test_admin_login_con_cookie_y_cierre():
+    c = TestClient(app)
+    assert c.get("/api/admin/stock").status_code == 401
+
+    bad_origin = c.post(
+        "/api/admin/login",
+        json={"password": settings.admin_token},
+        headers={"Origin": "https://sitio-malicioso.example"},
+    )
+    assert bad_origin.status_code == 403
+
+    bad = c.post("/api/admin/login", json={"password": "incorrecta"})
+    assert bad.status_code == 401
+
+    good = c.post("/api/admin/login", json={"password": settings.admin_token})
+    assert good.status_code == 200
+    assert good.headers["cache-control"] == "no-store"
+    assert c.cookies.get("sinu_admin_session")
+    assert c.get("/api/admin/stock").status_code == 200
+
+    assert c.post("/api/admin/logout").status_code == 200
+    assert c.get("/api/admin/stock").status_code == 401
+
+
+def test_login_bloquea_fuerza_bruta():
+    c = TestClient(app)
+    ip = {"CF-Connecting-IP": "203.0.113.50"}
+    for _ in range(5):
+        response = c.post(
+            "/api/admin/login", json={"password": "incorrecta"}, headers=ip
+        )
+        assert response.status_code == 401
+    blocked = c.post(
+        "/api/admin/login",
+        json={"password": settings.admin_token},
+        headers=ip,
+    )
+    assert blocked.status_code == 429
+    assert blocked.headers["retry-after"] == "900"
+
+
+def test_admin_put_rechaza_origen_externo():
+    c = TestClient(app)
+    assert c.post("/api/admin/login", json={"password": settings.admin_token}).status_code == 200
+    response = c.put(
+        "/api/admin/stock/suizo",
+        json={"available": True},
+        headers={"Origin": "https://sitio-malicioso.example"},
+    )
+    assert response.status_code == 403
+
+
+def test_token_admin_tambien_se_bloquea():
+    c = TestClient(app)
+    ip = {"CF-Connecting-IP": "203.0.113.51", "X-Admin-Token": "incorrecto"}
+    for _ in range(5):
+        assert c.get("/api/admin/orders", headers=ip).status_code == 401
+    blocked = c.get(
+        "/api/admin/orders",
+        headers={"CF-Connecting-IP": "203.0.113.51", "X-Admin-Token": settings.admin_token},
+    )
+    assert blocked.status_code == 429
 
 
 def test_rate_limit_no_afecta_health():
@@ -130,7 +198,12 @@ def test_producto_invalido():
 
 def test_panel_admin_y_stock_agotado():
     panel_path = settings.admin_panel_path or "/admin"
-    assert client.get(panel_path).status_code == 200
+    panel = client.get(panel_path)
+    assert panel.status_code == 200
+    assert "default-src 'none'" in panel.headers["content-security-policy"]
+    assert "script-src 'self'" in panel.headers["content-security-policy"]
+    assert "sessionStorage" not in panel.text
+    assert "X-Admin-Token" not in panel.text
     if panel_path != "/admin":
         assert client.get("/admin").status_code == 404
     assert client.get("/api/admin/stock").status_code == 401

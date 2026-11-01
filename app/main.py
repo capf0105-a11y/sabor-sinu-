@@ -5,10 +5,13 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+import threading
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -20,10 +23,10 @@ from .notifier import send_whatsapp_alert
 from .engine import ChatEngine
 from .menu import PRODUCTS, PRODUCTS_BY_ID, ZONES
 from .orders import PAYMENT_LABELS, OrderStore, admin_order, public_order
-from .schemas import CartIn, ChatIn, StockIn
+from .schemas import AdminLoginIn, CartIn, ChatIn, StockIn
 from .sessions import SessionStore, cart_public
 from .stock import StockStore
-from .utils import RateLimiter
+from .utils import LoginGuard, RateLimiter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +44,37 @@ stock = StockStore(
 sessions = SessionStore(settings.session_ttl_minutes)
 engine = ChatEngine(settings, store, stock)
 limiter = RateLimiter(settings.rate_limit_per_minute)
+login_guard = LoginGuard(max_attempts=5, window_seconds=900, block_seconds=900)
+
+ADMIN_COOKIE_NAME = "sinu_admin_session"
+ADMIN_SESSION_TTL = max(1, settings.admin_session_hours) * 3600
+_admin_sessions: dict[str, float] = {}
+_admin_sessions_lock = threading.Lock()
+
+PUBLIC_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+ADMIN_CSP = (
+    "default-src 'none'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "font-src 'self'; "
+    "base-uri 'none'; "
+    "form-action 'self'; "
+    "object-src 'none'; "
+    "frame-ancestors 'none'"
+)
 
 
 @asynccontextmanager
@@ -54,11 +88,15 @@ async def lifespan(_app: FastAPI):
     yield
 
 
+_PRODUCTION = settings.environment == "production"
 app = FastAPI(
     title=f"{settings.business_name} · API del asistente",
     description="Chatbot de ventas, carrito y notificaciones por correo.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if _PRODUCTION else "/docs",
+    redoc_url=None if _PRODUCTION else "/redoc",
+    openapi_url=None if _PRODUCTION else "/openapi.json",
 )
 
 if settings.allowed_origins:
@@ -75,18 +113,102 @@ if settings.allowed_origins:
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
 
+def _client_ip(request: Request) -> str:
+    """IP real detrás de Cloudflare/Render, con respaldo local."""
+    cloudflare_ip = request.headers.get("cf-connecting-ip", "").strip()
+    if cloudflare_ip:
+        return cloudflare_ip
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        first = forwarded.split(",", 1)[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "desconocido"
+
+
+def _admin_path() -> str:
+    path = (settings.admin_panel_path or "/admin").strip()
+    if not path.startswith("/"):
+        path = "/" + path
+    return path.rstrip("/") or "/admin"
+
+
+def _same_origin(request: Request) -> bool:
+    """True si una petición de navegador viene del mismo host.
+
+    Los clientes de automatización (smoke test) no envían Origin y siguen
+    funcionando con el token de cabecera.
+    """
+    origin = request.headers.get("origin")
+    if not origin:
+        return True
+    host = request.headers.get("host", "")
+    try:
+        return urlparse(origin).netloc == host
+    except ValueError:
+        return False
+
+
+def _apply_security_headers(response, path: str) -> None:
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    )
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    if _PRODUCTION:
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    admin_path = _admin_path()
+    if path == admin_path or path.startswith("/api/admin/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+        response.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
+        response.headers.setdefault("Content-Security-Policy", ADMIN_CSP)
+    else:
+        response.headers.setdefault("Content-Security-Policy", PUBLIC_CSP)
+
+
 @app.middleware("http")
 async def guard_requests(request: Request, call_next):
     path = request.url.path
+    response = None
+
     if path.startswith("/api/") and path != "/api/health":
-        ip = request.client.host if request.client else "desconocido"
+        ip = _client_ip(request)
         if not limiter.allow(ip):
-            return JSONResponse(
+            response = JSONResponse(
                 status_code=429,
                 content={"detail": "Demasiadas solicitudes. Espera un momento e intenta de nuevo."},
                 headers={"Retry-After": "30"},
             )
-    response = await call_next(request)
+
+    if (
+        response is None
+        and path.startswith("/api/")
+        and request.method in {"POST", "PUT", "PATCH"}
+    ):
+        raw_length = request.headers.get("content-length")
+        if raw_length:
+            try:
+                length = int(raw_length)
+            except ValueError:
+                response = JSONResponse(
+                    status_code=400, content={"detail": "Solicitud inválida."}
+                )
+            else:
+                if length > 64_000:
+                    response = JSONResponse(
+                        status_code=413,
+                        content={"detail": "La solicitud es demasiado grande."},
+                    )
+
+    if response is None:
+        response = await call_next(request)
+
     if path.startswith("/static/"):
         if path.endswith((".jpg", ".jpeg", ".png", ".webp", ".svg", ".ico")):
             response.headers.setdefault("Cache-Control", "public, max-age=86400")
@@ -95,19 +217,132 @@ async def guard_requests(request: Request, call_next):
     elif path == "/api/config":
         # La configuración cambia poco; 5 minutos de caché alivia visitas repetidas.
         response.headers.setdefault("Cache-Control", "public, max-age=300")
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+
+    _apply_security_headers(response, path)
     return response
 
 
-def require_admin(x_admin_token: str | None = Header(default=None)) -> None:
+def _admin_ip_allowed(request: Request) -> bool:
+    allowed = settings.admin_allowed_ips
+    return not allowed or _client_ip(request) in allowed
+
+
+def _cleanup_admin_sessions(now: float | None = None) -> None:
+    current = now if now is not None else time.time()
+    with _admin_sessions_lock:
+        expired = [token for token, until in _admin_sessions.items() if until <= current]
+        for token in expired:
+            _admin_sessions.pop(token, None)
+
+
+def _create_admin_session() -> str:
+    token = secrets.token_urlsafe(32)
+    with _admin_sessions_lock:
+        _admin_sessions[token] = time.time() + ADMIN_SESSION_TTL
+    return token
+
+
+def _valid_admin_session(token: str | None) -> bool:
+    if not token:
+        return False
+    current = time.time()
+    with _admin_sessions_lock:
+        until = _admin_sessions.get(token)
+        if not until:
+            return False
+        if until <= current:
+            _admin_sessions.pop(token, None)
+            return False
+        return True
+
+
+def require_admin(
+    request: Request,
+    x_admin_token: str | None = Header(default=None),
+) -> None:
     if not settings.admin_token:
         raise HTTPException(
             status_code=403,
             detail="Panel administrativo deshabilitado. Define ADMIN_TOKEN en el entorno.",
         )
-    if not x_admin_token or not secrets.compare_digest(x_admin_token, settings.admin_token):
+    if not _admin_ip_allowed(request):
+        raise HTTPException(status_code=403, detail="Acceso no permitido desde esta IP.")
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and not _same_origin(request):
+        raise HTTPException(status_code=403, detail="Origen no permitido.")
+    ip = _client_ip(request)
+    if x_admin_token and login_guard.is_blocked(ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Demasiados intentos fallidos. Espera 15 minutos e intenta de nuevo.",
+            headers={"Retry-After": "900"},
+        )
+    header_ok = bool(x_admin_token) and secrets.compare_digest(
+        x_admin_token.encode("utf-8"), settings.admin_token.encode("utf-8")
+    )
+    cookie_ok = _valid_admin_session(request.cookies.get(ADMIN_COOKIE_NAME))
+    if not header_ok and not cookie_ok:
+        if x_admin_token:
+            login_guard.register_failure(ip)
+            logger.warning("Token admin inválido desde %s", ip)
         raise HTTPException(status_code=401, detail="Token administrativo inválido.")
+
+
+@app.post("/api/admin/login")
+async def admin_login(
+    payload: AdminLoginIn,
+    request: Request,
+    response: Response,
+) -> dict:
+    if not settings.admin_token:
+        raise HTTPException(
+            status_code=403,
+            detail="Panel administrativo deshabilitado. Define ADMIN_TOKEN en el entorno.",
+        )
+    if not _admin_ip_allowed(request):
+        raise HTTPException(status_code=403, detail="Acceso no permitido desde esta IP.")
+    if not _same_origin(request):
+        raise HTTPException(status_code=403, detail="Origen no permitido.")
+    ip = _client_ip(request)
+    if login_guard.is_blocked(ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Demasiados intentos fallidos. Espera 15 minutos e intenta de nuevo.",
+            headers={"Retry-After": "900"},
+        )
+    if not secrets.compare_digest(
+        payload.password.encode("utf-8"), settings.admin_token.encode("utf-8")
+    ):
+        login_guard.register_failure(ip)
+        logger.warning("Intento de acceso admin fallido desde %s", ip)
+        raise HTTPException(status_code=401, detail="Contraseña incorrecta.")
+    login_guard.reset(ip)
+    _cleanup_admin_sessions()
+    token = _create_admin_session()
+    response.set_cookie(
+        key=ADMIN_COOKIE_NAME,
+        value=token,
+        max_age=ADMIN_SESSION_TTL,
+        httponly=True,
+        secure=_PRODUCTION,
+        samesite="strict",
+        path="/",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    logger.info("Acceso admin correcto desde %s", ip)
+    return {"ok": True, "expires_in": ADMIN_SESSION_TTL}
+
+
+@app.post("/api/admin/logout")
+async def admin_logout(request: Request, response: Response) -> dict:
+    if not _same_origin(request):
+        raise HTTPException(status_code=403, detail="Origen no permitido.")
+    token = request.cookies.get(ADMIN_COOKIE_NAME)
+    if token:
+        with _admin_sessions_lock:
+            _admin_sessions.pop(token, None)
+    response.delete_cookie(ADMIN_COOKIE_NAME, path="/")
+    response.headers["Cache-Control"] = "no-store"
+    return {"ok": True}
 
 
 def _notify_order(order_id: str) -> None:
@@ -148,10 +383,7 @@ async def favicon() -> FileResponse:
     return FileResponse(settings.static_dir / "img" / "favicon.svg", media_type="image/svg+xml")
 
 
-ADMIN_PANEL_PATH = settings.admin_panel_path or "/admin"
-if not ADMIN_PANEL_PATH.startswith("/"):
-    ADMIN_PANEL_PATH = "/" + ADMIN_PANEL_PATH
-ADMIN_PANEL_PATH = ADMIN_PANEL_PATH.rstrip("/") or "/admin"
+ADMIN_PANEL_PATH = _admin_path()
 
 
 @app.get(ADMIN_PANEL_PATH, include_in_schema=False)

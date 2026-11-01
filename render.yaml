@@ -22,6 +22,12 @@ services:
       # Ruta privada del panel. Sin esto, queda en /admin.
       - key: ADMIN_PANEL_PATH
         sync: false
+      # La sesión del panel usa una cookie HttpOnly y dura 8 horas.
+      - key: ADMIN_SESSION_HOURS
+        value: "8"
+      # Opcional: limita el panel a ciertas IPs (separadas por comas).
+      - key: ADMIN_ALLOWED_IPS
+        sync: false
       # Datos de ejemplo: cámbialos en el panel de Render.
       - key: BUSINESS_NAME
         value: Sabor Sinú
