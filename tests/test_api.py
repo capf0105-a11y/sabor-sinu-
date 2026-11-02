@@ -229,3 +229,45 @@ def test_panel_admin_y_stock_agotado():
     menu = client.get("/api/menu").json()
     suizo = next(item for item in menu["items"] if item["id"] == "suizo")
     assert suizo["available"] is True
+
+
+def test_cors_permite_github_pages():
+    origin = "https://capf0105-a11y.github.io"
+    response = client.get("/api/config", headers={"Origin": origin})
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+    preflight = client.options(
+        "/api/chat",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == origin
+    assert "POST" in preflight.headers["access-control-allow-methods"]
+
+    blocked = client.get(
+        "/api/config", headers={"Origin": "https://sitio-no-autorizado.example"}
+    )
+    assert blocked.status_code == 200
+    assert "access-control-allow-origin" not in blocked.headers
+
+
+def test_pages_publico_actualizado():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    index = (root / "docs" / "index.html").read_text(encoding="utf-8")
+    assert 'name="sinu-api-base" content="https://sabor-sinu.onrender.com"' in index
+    assert 'href="static/css/styles.css' in index
+    assert 'src="static/js/app.js' in index
+    assert 'href="credits.html"' in index
+    assert 'href="/static/' not in index
+    assert (root / "docs" / ".nojekyll").exists()
+
+    app_js = (root / "docs" / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    assert "sinu-api-base" in app_js
+    assert "assetUrl(product.image)" in app_js

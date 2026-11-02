@@ -8,6 +8,23 @@
 const STORAGE_KEY = 'sinu_session_id';
 const THEME_KEY = 'sinu_theme';
 
+/* Cuando la tienda se sirve desde GitHub Pages, la API vive en Render.
+   En Render el meta no existe y API_BASE queda vacío (mismo origen). */
+const API_BASE = (document.querySelector('meta[name="sinu-api-base"]')?.content || '').replace(/\/+$/, '');
+
+function assetUrl(value) {
+  if (!value) return value;
+  if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:') || value.startsWith('blob:')) {
+    return value;
+  }
+  // En GitHub Pages las fotos viajan con el sitio; en Render se sirven locales.
+  if (value.startsWith('/static/')) {
+    return API_BASE ? value.slice(1) : value;
+  }
+  if (value.startsWith('/')) return `${API_BASE}${value}`;
+  return value;
+}
+
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
@@ -223,7 +240,7 @@ async function apiOnce(path, { method, body, timeout }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetch(`/api${path}`, {
+    const response = await fetch(`${API_BASE}/api${path}`, {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
@@ -525,7 +542,7 @@ function productCardHTML(product) {
   return `
     <article class="product-card${soldOut ? ' sold-out' : ''}" data-product="${escapeAttr(product.id)}">
       <div class="product-media">
-        <img src="${escapeAttr(product.image)}" alt="${escapeAttr(product.name)}" width="800" height="600" loading="lazy">
+        <img src="${escapeAttr(assetUrl(product.image))}" alt="${escapeAttr(product.name)}" width="800" height="600" loading="lazy">
         <span class="product-badge">${soldOut ? 'Agotado' : escapeHtml(product.badge)}</span>
       </div>
       <div class="product-body">
@@ -762,7 +779,7 @@ function renderCart() {
     ].join(' · ');
     return `
       <div class="cart-item" data-uid="${escapeAttr(item.uid)}">
-        <div class="cart-thumb"><img src="${escapeAttr(item.image)}" alt="" loading="lazy"></div>
+        <div class="cart-thumb"><img src="${escapeAttr(assetUrl(item.image))}" alt="" loading="lazy"></div>
         <div class="cart-info">
           <h4>${escapeHtml(item.name)}</h4>
           ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}

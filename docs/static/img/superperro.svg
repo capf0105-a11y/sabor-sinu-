@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Súper Perro de la Casa">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b1212"/>
+      <stop offset=".55" stop-color="#b91c1c"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="42%" r="58%">
+      <stop offset="0" stop-color="#fff" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="30" height="30" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="2" fill="#fff" opacity=".05"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#dots)"/>
+  <circle cx="110" cy="100" r="130" fill="#fff" opacity=".05"/>
+  <circle cx="690" cy="500" r="180" fill="#000" opacity=".10"/>
+  <rect width="800" height="600" fill="url(#glow)"/>
+  <ellipse cx="400" cy="486" rx="248" ry="52" fill="#000" opacity=".22"/>
+  <ellipse cx="400" cy="438" rx="236" ry="64" fill="#fdf6e8" opacity=".94"/>
+  <ellipse cx="400" cy="432" rx="196" ry="48" fill="#efe2ca" opacity=".8"/>
+  <text x="400" y="425" font-size="250" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji">🌭</text>
+  <text x="400" y="552" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" letter-spacing="6" fill="#fdf6e8" opacity=".92">SÚPER PERRO DE LA CASA</text>
+</svg>

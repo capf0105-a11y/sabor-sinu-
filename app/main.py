@@ -99,13 +99,19 @@ app = FastAPI(
     openapi_url=None if _PRODUCTION else "/openapi.json",
 )
 
-if settings.allowed_origins:
+# La tienda pública puede servirse desde GitHub Pages y consumir esta API.
+# Es un origen propio y de solo lectura pública; el panel sigue viviendo en
+# Render y usa cookies same-origin, por lo que no se habilitan credenciales.
+_PUBLIC_FRONTEND_ORIGINS = ("https://capf0105-a11y.github.io",)
+_cors_origins = tuple(dict.fromkeys((*settings.allowed_origins, *_PUBLIC_FRONTEND_ORIGINS)))
+if _cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=list(settings.allowed_origins),
+        allow_origins=list(_cors_origins),
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Content-Type", "X-Admin-Token"],
+        max_age=600,
     )
 
 # Comprime respuestas grandes (HTML, CSS, JS y JSON) para gastar menos ancho

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sabor Sinú">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff8a4c"/>
+      <stop offset="1" stop-color="#c7431f"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#17130f"/>
+  <circle cx="32" cy="32" r="22" fill="url(#g)"/>
+  <path d="M42 22c-3-3-9-4-13-2-4 2-6 6-4 9 2 3 8 3 11 5 3 2 3 6 0 8-3 2-8 1-11-1" fill="none" stroke="#fff8ec" stroke-width="5" stroke-linecap="round"/>
+</svg>
