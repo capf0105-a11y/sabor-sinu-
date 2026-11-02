@@ -8,6 +8,9 @@ Aplicación web completa para un restaurante de comida rápida en Montería: el 
 - **Correo:** SMTP real o **modo demo** que guarda el HTML en `data/outbox/` para revisarlo sin configurar nada.
 - **Persistencia:** pedidos en `data/orders.json` con escritura atómica; sesiones en memoria con TTL.
 
+> **Tienda pública:** https://capf0105-a11y.github.io/sabor-sinu-/  
+> **API y panel privado:** siguen en Render, con la misma URL de siempre.
+
 ---
 
 ## 1. Inicio rápido (local)
@@ -217,7 +220,8 @@ Si no defines `ADMIN_PANEL_PATH`, el smoke test omite la página privada del pan
 - `.github/workflows/ci.yml`: ejecuta `pytest` en cada push, en cada pull request y todos los días a las 09:00 UTC. Si falla una ejecución programada, abre un issue.
 - `.github/workflows/smoke.yml`: revisa la tienda real cada 2 horas. Si algo falla, abre un issue; cuando vuelve a funcionar, lo cierra solo.
 - `.github/workflows/deploy.yml`: dispara un despliegue en Render después de cada push a `main`, usando el Deploy Hook. Así no dependemos del webhook automático de Render.
-- `.github/workflows/keepalive.yml`: hace ping a Render cada 5 minutos con dos horarios desfasados y evita que GitHub desactive los workflows por inactividad. Render gratis se duerme tras 15 minutos sin tráfico; si GitHub retrasa un cron, el segundo horario reduce la espera. Para **cero** pantallas de espera haría falta un plan pago de Render o un monitor externo que haga ping cada minuto.
+- `.github/workflows/keepalive.yml`: hace ping a Render cada 5 minutos con dos horarios desfasados y evita que GitHub desactive los workflows por inactividad. Render gratis se duerme tras 15 minutos sin tráfico; si GitHub retrasa un cron, el segundo horario reduce la espera. La tienda pública ya vive en GitHub Pages, así que la pantalla negra de Render no aparece; el keepalive mantiene la API despierta para que el menú y el chat respondan rápido. Para **cero** espera en la API haría falta un plan pago de Render o un monitor externo que haga ping cada minuto.
+- **GitHub Pages** publica `docs/` en cada push a `main`. El CI ejecuta `scripts/build_pages.py` y falla si `docs/` no está sincronizado con `static/`.
 
 Secretos necesarios en GitHub (**Settings → Secrets and variables → Actions**):
 
@@ -250,6 +254,28 @@ También puedes crear un **Web Service** manual:
 - Health check: `/api/health`
 
 > El plan gratis de Render duerme el servicio tras 15 minutos sin tráfico. El workflow `keepalive.yml` hace ping cada 5 minutos para mantenerlo despierto, pero GitHub puede retrasar los cron. Mientras Render despierta, la tienda muestra una pantalla de arranque clara con el logo de Sabor Sinú (no una pantalla negra) y un botón de reintento si tarda demasiado. Para eliminar por completo la espera necesitas un plan pago de Render o un monitor externo que haga ping cada minuto. El disco es efímero: para conservar pedidos entre despliegues, monta un disco persistente y apunta `DATA_DIR`, `ORDERS_FILE` y `OUTBOX_DIR` allí (o migra a una base de datos).
+
+### Tienda pública en GitHub Pages (recomendado para clientes)
+
+La tienda que abren los clientes está publicada como sitio estático en **GitHub Pages**:
+
+**https://capf0105-a11y.github.io/sabor-sinu-/**
+
+- `docs/` contiene solo la tienda pública: HTML, CSS, JavaScript y fotos. **No** incluye el panel privado.
+- La API, los pedidos y el panel del vendedor siguen en Render.
+- `static/js/app.js` lee `meta[name="sinu-api-base"]` para llamar a Render desde GitHub Pages. En Render ese meta no existe y la API se usa en el mismo origen.
+- El CORS de la API permite el origen `https://capf0105-a11y.github.io`.
+- GitHub Pages está configurado en **Settings → Pages → Deploy from a branch → `main` / `/docs`**.
+- Para actualizar la tienda después de cambiar `static/`:
+
+  ```bash
+  python scripts/build_pages.py
+  git add docs
+  git commit -m "Actualizar tienda pública"
+  git push
+  ```
+
+La ventaja es que el enlace de la tienda carga al instante y **nunca muestra la pantalla negra de Render**. Si Render está dormido, la app muestra su propia pantalla de carga mientras despierta la API. El enlace antiguo de Render sigue funcionando como respaldo.
 
 ### Railway / Heroku
 
