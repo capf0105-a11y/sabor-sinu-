@@ -123,6 +123,28 @@ class ChatEngine:
         intent = detect_intent(norm)
         order_code = extract_order_code(norm)
 
+        # Fuera de horario no se toman pedidos; solo se informa el horario y
+        # se permite consultar el estado de un pedido ya hecho.
+        if (
+            intent not in ("hours", "status")
+            and not order_code
+            and not schedule_status(
+                self.settings.open_time, self.settings.close_time
+            )["is_open"]
+        ):
+            return self._resp(
+                session,
+                [
+                    text(
+                        "Ahora mismo **no estamos atendiendo** porque estamos cerrados 😴\n"
+                        f"Nuestro horario es **{self.settings.business_hours}** "
+                        "(hora de Colombia).\n"
+                        "Escríbenos en ese horario y con gusto te tomamos el pedido."
+                    )
+                ],
+                [quick("Ver el horario", "Horario"), quick("Estado de mi pedido")],
+            )
+
         # Un pedido ya confirmado abre una conversación nueva, salvo que se
         # consulte el estado o se pida otro pedido.
         if session.stage == "confirmed":

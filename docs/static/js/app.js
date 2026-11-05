@@ -322,8 +322,8 @@ async function init() {
   }
 }
 
-const DEFAULT_OPEN_TIME = '11:00';
-const DEFAULT_CLOSE_TIME = '22:30';
+const DEFAULT_OPEN_TIME = '05:00';
+const DEFAULT_CLOSE_TIME = '23:30';
 
 function bogotaIsOpen(open = DEFAULT_OPEN_TIME, close = DEFAULT_CLOSE_TIME) {
   try {

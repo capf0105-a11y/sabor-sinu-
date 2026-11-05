@@ -65,11 +65,10 @@ class Settings:
     business_address: str = _env(
         "BUSINESS_ADDRESS", "Calle 34 # 6-12, Centro, Montería, Córdoba"
     )
-    business_hours: str = _env(
-        "BUSINESS_HOURS", "Lunes a domingo · 11:00 a.m. – 10:30 p.m."
-    )
-    open_time: str = _env("OPEN_TIME", "11:00")
-    close_time: str = _env("CLOSE_TIME", "22:30")
+    # Horario fijo (hora de Colombia): abierto de 5:00 a.m. a 11:30 p.m.
+    business_hours: str = "Lunes a domingo · 5:00 a.m. – 11:30 p.m."
+    open_time: str = "05:00"
+    close_time: str = "23:30"
     business_instagram: str = _env("BUSINESS_INSTAGRAM", "@saborsinu")
 
     # Domicilios y tiempos

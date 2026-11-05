@@ -21,6 +21,9 @@ def setup(tmp_path):
         orders_file=tmp_path / "orders.json",
         outbox_dir=tmp_path / "outbox",
         email_dry_run=True,
+        # Abierto las 24 h para que las pruebas no dependan de la hora real.
+        open_time="00:00",
+        close_time="00:00",
     )
     store = OrderStore(cfg.orders_file)
     return ChatEngine(cfg, store), store, Session(id="sess_test")
@@ -213,3 +216,18 @@ def test_public_order_no_expone_correo(setup):
     public = public_order(store.get(response["order"]["id"]))
     assert "email" not in public
     assert public["customer"]["payment_label"] == "Nequi"
+
+
+def test_cerrado_responde_mensaje_de_horario(setup, monkeypatch):
+    engine, _, session = setup
+    monkeypatch.setattr(
+        "app.engine.schedule_status",
+        lambda *args, **kwargs: {"is_open": False, "status_label": "Cerrado"},
+    )
+    response = say(engine, session, "Quiero dos suizos")
+    assert "no estamos atendiendo" in response["blocks"][0]["text"]
+    assert "5:00 a.m." in response["blocks"][0]["text"]
+    assert response["cart"]["count"] == 0
+    # Preguntar el horario sigue funcionando estando cerrado.
+    response = say(engine, session, "¿Cuál es el horario?")
+    assert "cerrados" in response["blocks"][0]["text"]

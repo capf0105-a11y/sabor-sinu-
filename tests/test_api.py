@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import settings
 from app.main import app, store
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def negocio_abierto(monkeypatch):
+    """El chat rechaza pedidos fuera de horario; las pruebas no deben depender de la hora."""
+    monkeypatch.setattr(
+        "app.engine.schedule_status",
+        lambda *args, **kwargs: {"is_open": True, "status_label": "Abierto ahora"},
+    )
 
 
 def test_home_y_salud():
