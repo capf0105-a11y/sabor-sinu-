@@ -62,7 +62,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Queso costeño gratinado",
         ),
         category="Principales",
-        image="/static/img/suizo.jpg?v=20261105b",
+        image="/static/img/suizo.jpg?v=20261105c",
         badge="Más vendido",
         aliases=(
             "suizo con lomito monteriano",
@@ -126,7 +126,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Suero costeño y salsas de la casa",
         ),
         category="Principales",
-        image="/static/img/salchipapa.jpg",
+        image="/static/img/salchipapa.jpg?v=20261105c",
         badge="Para compartir",
         aliases=(
             "salchipapa salvajada costena",
