@@ -31,12 +31,14 @@ def _write(path: Path, text: str) -> None:
 
 
 def _copy_public_tree() -> None:
+    # En carpetas sincronizadas (OneDrive) rmtree puede fallar por bloqueos.
+    # Los archivos se sobrescriben igual, así que un borrado parcial no estorba.
     if DOCS.exists():
-        shutil.rmtree(DOCS)
+        shutil.rmtree(DOCS, ignore_errors=True)
 
-    (DOCS / "static" / "css").mkdir(parents=True)
-    (DOCS / "static" / "js").mkdir(parents=True)
-    (DOCS / "static" / "img").mkdir(parents=True)
+    (DOCS / "static" / "css").mkdir(parents=True, exist_ok=True)
+    (DOCS / "static" / "js").mkdir(parents=True, exist_ok=True)
+    (DOCS / "static" / "img").mkdir(parents=True, exist_ok=True)
 
     shutil.copy2(
         STATIC / "css" / "styles.css", DOCS / "static" / "css" / "styles.css"

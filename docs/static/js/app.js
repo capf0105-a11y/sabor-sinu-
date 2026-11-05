@@ -159,7 +159,7 @@ function paymentShort(order) {
 }
 
 function whatsappOrderLink(order) {
-  const base = state.config?.contact?.whatsapp || 'https://wa.me/573044667353';
+  const base = state.config?.contact?.whatsapp || 'https://wa.me/573168144276';
   const c = order?.customer || {};
   const items = (order?.items || []).map((item) => {
     const mods = (item.modifiers || []).map((m) => m.name).filter(Boolean);
@@ -182,7 +182,7 @@ function whatsappOrderLink(order) {
 }
 
 function whatsappProofLink(order) {
-  const base = state.config?.contact?.whatsapp || 'https://wa.me/573044667353';
+  const base = state.config?.contact?.whatsapp || 'https://wa.me/573168144276';
   const c = order?.customer || {};
   const items = (order?.items || []).map((item) => {
     const mods = (item.modifiers || []).map((m) => m.name).filter(Boolean);
@@ -191,8 +191,8 @@ function whatsappProofLink(order) {
   });
   const payment = paymentShort(order);
   const number = c.payment === 'llave'
-    ? (state.config?.contact?.llave || '304 466 7353')
-    : (state.config?.contact?.nequi || '304 466 7353');
+    ? (state.config?.contact?.llave || '316 814 4276')
+    : (state.config?.contact?.nequi || '316 814 4276');
   const text = [
     'COMPROBANTE DE PAGO',
     `Pedido: ${order?.id || ''}`,
@@ -631,8 +631,8 @@ function successHTML(order) {
   const phoneLink = contact.phone_link || `tel:${order.customer?.phone || ''}`;
   const payment = paymentShort(order);
   const paymentNumber = order.customer?.payment === 'llave'
-    ? (contact.llave || '304 466 7353')
-    : (contact.nequi || '304 466 7353');
+    ? (contact.llave || '316 814 4276')
+    : (contact.nequi || '316 814 4276');
   return `
     <div class="success-card">
       <div class="success-top">
@@ -722,7 +722,7 @@ function statusDetailHTML(order) {
       <div class="summary-field"><span>Celular</span><strong>${escapeHtml(customer.phone)}</strong></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-      <a class="btn-primary btn-sm" href="${escapeAttr(state.config?.contact?.phone_link || 'tel:+573044667353')}">Llamar al despacho</a>
+      <a class="btn-primary btn-sm" href="${escapeAttr(state.config?.contact?.phone_link || 'tel:+573168144276')}">Llamar al despacho</a>
       <button class="btn-secondary btn-sm" type="button" data-refresh-status>Actualizar estado</button>
     </div>
     <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:12px">El estado se actualiza automáticamente cada 30 segundos.</p>`;
@@ -825,7 +825,7 @@ function renderCart() {
     </button>
     <p class="cart-note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-      ${isCheckout() ? 'Te pedimos los datos de entrega en el chat.' : 'Pago con Nequi o Llave al 304 466 7353'}
+      ${isCheckout() ? 'Te pedimos los datos de entrega en el chat.' : 'Pago con Nequi o Llave al 316 814 4276'}
     </p>
     <button class="cart-clear" type="button" data-clear-cart>Vaciar carrito</button>`;
 }

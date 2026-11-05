@@ -131,8 +131,8 @@ def main() -> int:
         [payment.get("id") for payment in payments] == ["nequi", "llave"],
         str(payments),
     )
-    check("Nequi y Llave apuntan al 304 466 7353", contact.get("nequi") == "304 466 7353" and contact.get("llave") == "304 466 7353", str(contact))
-    check("el teléfono del vendedor está publicado", "304 466 7353" in contact.get("phone", ""), str(contact.get("phone")))
+    check("Nequi y Llave apuntan al 316 814 4276", contact.get("nequi") == "316 814 4276" and contact.get("llave") == "316 814 4276", str(contact))
+    check("el teléfono del vendedor está publicado", "316 814 4276" in contact.get("phone", ""), str(contact.get("phone")))
     check(
         "/api/config tiene caché de 5 minutos",
         "max-age=300" in headers.get("cache-control", ""),

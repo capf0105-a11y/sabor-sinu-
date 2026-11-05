@@ -101,7 +101,7 @@ browsing
 
 - Si el cliente escribe la dirección con el barrio incluido, se detecta la zona automáticamente y se evita pedir el barrio otra vez.
 - El celular debe tener 10 dígitos y empezar por 3 (se acepta `+57`).
-- Métodos de pago: **Nequi** o **Llave**, ambos al **304 466 7353**.
+- Métodos de pago: **Nequi** o **Llave**, ambos al **316 814 4276**.
 - Al confirmar se crea el pedido, se vacía el carrito y se agenda el correo en segundo plano.
 
 Ejemplos que entiende:
@@ -205,7 +205,7 @@ Cobertura actual: **28 pruebas** de NLP, totales, flujo completo de checkout, co
 python scripts/smoke_test.py
 ```
 
-Comprueba el sitio real: salud, commit desplegado, precios, domicilio de $2.000, Nequi/Llave al 304 466 7353, fotos JPG, panel privado, contraseña, persistencia del stock, caché, GZip y cabeceras de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy). También verifica que `/docs` y `/openapi.json` no estén expuestos en producción. Si defines `ADMIN_TOKEN` y `ADMIN_PANEL_PATH`, prueba el panel autenticado:
+Comprueba el sitio real: salud, commit desplegado, precios, domicilio de $2.000, Nequi/Llave al 316 814 4276, fotos JPG, panel privado, contraseña, persistencia del stock, caché, GZip y cabeceras de seguridad (CSP, HSTS, X-Frame-Options, Permissions-Policy). También verifica que `/docs` y `/openapi.json` no estén expuestos en producción. Si defines `ADMIN_TOKEN` y `ADMIN_PANEL_PATH`, prueba el panel autenticado:
 
 ```bash
 $env:ADMIN_TOKEN="tu-contraseña"          # PowerShell
