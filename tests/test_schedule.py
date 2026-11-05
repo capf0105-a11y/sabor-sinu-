@@ -2,6 +2,9 @@
 
 from datetime import datetime, timezone
 
+from app.config import settings
+from app.menu import PRODUCTS_BY_ID
+from app.sessions import Session, add_to_cart, cart_prep_minutes
 from app.utils import BOGOTA, schedule_status
 
 
@@ -32,6 +35,17 @@ def test_horario_que_cruza_la_medianoche():
     assert not schedule_status(
         "18:00", "02:00", datetime(2026, 1, 6, 12, 0, tzinfo=BOGOTA)
     )["is_open"]
+
+
+def test_el_tiempo_lo_manda_el_plato_mas_lento():
+    session = Session(id="eta")
+    add_to_cart(session.cart, PRODUCTS_BY_ID["gaseosa_coca"], 2)
+    assert cart_prep_minutes(session.cart) == 2
+    assert cart_prep_minutes(session.cart) + settings.delivery_minutes == 14
+
+    add_to_cart(session.cart, PRODUCTS_BY_ID["suizo"], 1)
+    assert cart_prep_minutes(session.cart) == 18
+    assert cart_prep_minutes(session.cart) + settings.delivery_minutes == 30
 
 
 def test_convierte_utc_a_hora_colombiana():

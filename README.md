@@ -124,9 +124,10 @@ Copia `.env.example` como `.env`. Los valores por defecto funcionan sin tocar na
 |---|---|
 | `BUSINESS_NAME`, `BUSINESS_TAGLINE` | Nombre y eslogan |
 | `BUSINESS_PHONE`, `BUSINESS_WHATSAPP` | Teléfono de despacho y WhatsApp |
-| `BUSINESS_ADDRESS`, `BUSINESS_HOURS` | Dirección y horario visibles |
+| `BUSINESS_ADDRESS`, `BUSINESS_HOURS` | Dirección y texto del horario visible |
+| `OPEN_TIME`, `CLOSE_TIME` | Horario real (`HH:MM`) para calcular abierto/cerrado en hora de Colombia |
 | `DELIVERY_BASE_FEE`, `FREE_DELIVERY_FROM` | Domicilio base y umbral de envío gratis |
-| `PREP_MINUTES`, `DELIVERY_MINUTES` | Tiempo estimado mostrado y seguimiento |
+| `PREP_MINUTES`, `DELIVERY_MINUTES` | Tiempo base y domicilio; cada pedido usa el plato más lento de la carta |
 | `SMTP_*` | Servidor de correo saliente |
 | `ADMIN_EMAILS` | Destinatarios del pedido (separados por coma) |
 | `EMAIL_DRY_RUN` | `true` guarda en outbox; `false` intenta enviar |
