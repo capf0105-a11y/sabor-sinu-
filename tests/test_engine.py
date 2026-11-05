@@ -276,3 +276,32 @@ def test_buenavista_domicilio_fijo_y_direccion_con_barrio(setup):
     order = store.get(response["order"]["id"])
     assert order["delivery_fee"] == 2000
     assert order["customer"]["barrio"] == "Buenavista, Córdoba"
+
+
+def test_monteria_direccion_y_barrio_en_un_solo_mensaje(setup):
+    engine, _, session = setup
+    say(engine, session, "Quiero un suizo")
+    say(engine, session, "Finalizar pedido")
+    response = say(engine, session, "Ana Pérez")
+    assert "dirección y barrio" in response["blocks"][0]["text"]
+
+    # Barrio que no está en las zonas: se acepta sin pedirlo de nuevo.
+    response = say(engine, session, "Calle 12 #4-56, barrio Los Alamos Nuevos")
+    assert response["stage"] == "checkout_phone"
+    assert session.customer["barrio"] == "Los Alamos Nuevos"
+    assert session.customer["delivery_fee"] == 2000
+
+
+def test_monteria_sin_barrio_lo_pide_una_sola_vez(setup):
+    engine, _, session = setup
+    say(engine, session, "Quiero un suizo")
+    say(engine, session, "Finalizar pedido")
+    say(engine, session, "Ana Pérez")
+    response = say(engine, session, "Calle 12 #4-56")
+    assert response["stage"] == "checkout_barrio"
+
+
+def test_suizo_se_llama_suizo_con_lomito(setup):
+    engine, _, session = setup
+    response = say(engine, session, "Quiero un suizo monteriano")
+    assert response["cart"]["items"][0]["name"] == "Suizo con Lomito"

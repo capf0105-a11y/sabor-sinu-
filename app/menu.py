@@ -46,7 +46,7 @@ class Product:
 PRODUCTS: tuple[Product, ...] = (
     Product(
         id="suizo",
-        name="Suizo con Lomito Monteriano",
+        name="Suizo con Lomito",
         price=33600,
         description=(
             "Pan artesanal, salchicha suiza premium picada (150 g), lomito de res "

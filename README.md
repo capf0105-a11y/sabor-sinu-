@@ -55,7 +55,7 @@ Abre **http://127.0.0.1:8000**. La documentación interactiva de la API queda en
 
 | Producto | Precio COP |
 |---|---:|
-| Suizo con Lomito Monteriano | $33.600 |
+| Suizo con Lomito | $33.600 |
 | Súper Perro de la Casa | $18.000 |
 | Salchipapa Salvajada Costeña | $28.000 |
 | Hamburguesa Sinuana Especial | $18.000 |

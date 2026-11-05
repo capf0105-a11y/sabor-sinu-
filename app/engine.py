@@ -65,6 +65,21 @@ BUENAVISTA_DELIVERY_FEE = 2000
 BUENAVISTA_LABEL = "Buenavista, Córdoba"
 
 
+def _guess_barrio(address: str) -> str:
+    """Saca el barrio de una dirección escrita en un solo mensaje, si lo trae."""
+    match = re.search(
+        r"(?:barrio|br\.?|urbanizaci[oó]n)\s+([^,;]{3,40})", address, re.IGNORECASE
+    )
+    if match:
+        return match.group(1).strip(" .-")
+    if "," in address:
+        tail = address.rsplit(",", 1)[1].strip(" .-")
+        letters = len(re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", tail))
+        if letters >= 4 and not re.search(r"\d", tail):
+            return tail
+    return ""
+
+
 def _strip_barrio_from_address(address: str, barrio: str) -> str:
     """Evita mostrar dos veces el barrio cuando el cliente lo incluye en la dirección."""
     if not address or not barrio:
@@ -688,15 +703,15 @@ class ChatEngine:
         stage = session.stage
         if stage == "checkout_name":
             return "¿Cuál es tu **nombre completo**?"
-        if stage == "checkout_address" and session.town == "buenavista":
+        if stage == "checkout_address":
+            ejemplo = (
+                "Calle 5 #3-20, barrio El Centro"
+                if session.town == "buenavista"
+                else "Calle 12 #4-56, barrio Centro"
+            )
             return (
                 "¿A qué **dirección y barrio** te llevamos el pedido? Escríbelos juntos "
-                "(ej: *Calle 5 #3-20, barrio El Centro*)."
-            )
-        if stage == "checkout_address":
-            return (
-                "¿A qué **dirección exacta** te llevamos el pedido? Incluye calle o carrera, "
-                "número y una referencia (ej: *Calle 12 #4-56, frente al parque*)."
+                f"en un solo mensaje (ej: *{ejemplo}*)."
             )
         if stage == "checkout_barrio":
             return "¿En qué **barrio** queda la dirección? Así calculo el domicilio exacto."
@@ -813,6 +828,26 @@ class ChatEngine:
                     ],
                     [],
                 )
+            guess = _guess_barrio(address)
+            if guess:
+                # Barrio que no está en las zonas: se acepta con la tarifa base.
+                session.customer["barrio"] = display_barrio(guess)[:60]
+                session.customer["zone"] = "Por confirmar"
+                session.customer["delivery_fee"] = self.settings.delivery_base_fee
+                session.stage = "checkout_phone"
+                return self._resp(
+                    session,
+                    [
+                        text(
+                            f"Perfecto: **{address}**.\n"
+                            f"El domicilio queda en **{money(self.settings.delivery_base_fee)}** "
+                            "y el despacho confirma la tarifa exacta.\n\n"
+                            + self._checkout_question(session)
+                        )
+                    ],
+                    [],
+                )
+            # Sin barrio en el mensaje: se pide una sola vez.
             session.stage = "checkout_barrio"
             return self._resp(
                 session,
@@ -1160,7 +1195,7 @@ class ChatEngine:
                 session,
                 [
                     text(
-                        "Si es tu primera vez, te recomiendo el **Suizo con Lomito Monteriano** "
+                        "Si es tu primera vez, te recomiendo el **Suizo con Lomito** "
                         "(el más vendido), la **Hamburguesa Sinuana** y la **Salchipapa Salvajada** "
                         "para compartir."
                     ),
