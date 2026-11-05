@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, field_validator
 class ChatIn(BaseModel):
     session_id: str | None = Field(default=None, max_length=64)
     message: str = Field(min_length=1, max_length=500)
+    # Versión del chat sin restricción de horario (página /abierto/).
+    always_open: bool = False
 
     @field_validator("message")
     @classmethod
@@ -25,6 +27,7 @@ class CartIn(BaseModel):
     product_id: str | None = Field(default=None, max_length=40)
     uid: str | None = Field(default=None, max_length=40)
     qty: int | None = Field(default=None, ge=1, le=20)
+    always_open: bool = False
 
     @field_validator("product_id")
     @classmethod

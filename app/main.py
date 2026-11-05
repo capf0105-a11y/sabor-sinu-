@@ -432,8 +432,10 @@ async def health_alias() -> dict:
 
 
 @app.get("/api/config")
-async def get_config() -> dict:
+async def get_config(always_open: bool = False) -> dict:
     status = schedule_status(settings.open_time, settings.close_time)
+    if always_open:
+        status = {"is_open": True, "status_label": "Abierto ahora"}
     return {
         "brand": {
             "name": settings.business_name,
@@ -487,7 +489,9 @@ async def get_menu() -> dict:
 async def chat(payload: ChatIn, background: BackgroundTasks) -> dict:
     sessions.cleanup()
     session = sessions.get_or_create(payload.session_id)
-    result = engine.handle(session, payload.message)
+    result = engine.handle(
+        session, payload.message, always_open=payload.always_open
+    )
     notify_id = result.pop("_notify_order_id", None)
     if notify_id:
         background.add_task(_notify_order, notify_id)
@@ -498,7 +502,7 @@ async def chat(payload: ChatIn, background: BackgroundTasks) -> dict:
 async def cart(payload: CartIn) -> dict:
     sessions.cleanup()
     session = sessions.get_or_create(payload.session_id)
-    if payload.action in ("add", "inc") and not schedule_status(
+    if payload.action in ("add", "inc") and not payload.always_open and not schedule_status(
         settings.open_time, settings.close_time
     )["is_open"]:
         raise HTTPException(

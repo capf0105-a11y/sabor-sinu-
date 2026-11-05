@@ -302,3 +302,22 @@ def test_carrito_bloqueado_fuera_de_horario(monkeypatch):
     )
     assert response.status_code == 403
     assert "cerrados" in response.json()["detail"]
+
+
+def test_carrito_siempre_abierto_ignora_horario(monkeypatch):
+    monkeypatch.setattr(
+        "app.main.schedule_status",
+        lambda *args, **kwargs: {"is_open": False, "status_label": "Cerrado"},
+    )
+    response = client.post(
+        "/api/cart",
+        json={
+            "action": "add",
+            "product_id": "gaseosa_coca",
+            "qty": 1,
+            "always_open": True,
+        },
+    )
+    assert response.status_code == 200
+    config = client.get("/api/config?always_open=true").json()
+    assert config["contact"]["is_open"] is True

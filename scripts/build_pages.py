@@ -101,10 +101,29 @@ def _build_credits() -> None:
     _write(DOCS / "credits.html", credits)
 
 
+def _build_abierto() -> None:
+    """Segundo enlace (/abierto/): mismo chatbot, sin restricción de horario."""
+    page = (DOCS / "index.html").read_text(encoding="utf-8")
+    page = page.replace('href="static/', 'href="../static/')
+    page = page.replace('src="static/', 'src="../static/')
+    page = page.replace('href="credits.html"', 'href="../credits.html"')
+    page = page.replace(
+        f'<meta name="sinu-api-base" content="{API_BASE}">',
+        (
+            f'<meta name="sinu-api-base" content="{API_BASE}">\n'
+            '  <meta name="sinu-always-open" content="1">\n'
+            '  <meta name="sinu-asset-base" content="../">\n'
+            '  <meta name="robots" content="noindex">'
+        ),
+    )
+    _write(DOCS / "abierto" / "index.html", page)
+
+
 def main() -> None:
     _copy_public_tree()
     _build_index()
     _build_credits()
+    _build_abierto()
     # Evita que Jekyll procese los archivos y garantiza que se sirvan tal cual.
     (DOCS / ".nojekyll").write_text("", encoding="utf-8")
     print(f"GitHub Pages listo en {DOCS}")

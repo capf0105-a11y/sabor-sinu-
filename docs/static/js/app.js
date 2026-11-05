@@ -15,6 +15,10 @@ const THEME_KEY = 'sinu_theme';
    En Render el meta no existe y API_BASE queda vacío (mismo origen). */
 const API_BASE = (document.querySelector('meta[name="sinu-api-base"]')?.content || '').replace(/\/+$/, '');
 
+/* Versión sin restricción de horario (página /abierto/ de GitHub Pages). */
+const ALWAYS_OPEN = document.querySelector('meta[name="sinu-always-open"]')?.content === '1';
+const ASSET_BASE = document.querySelector('meta[name="sinu-asset-base"]')?.content || '';
+
 function assetUrl(value) {
   if (!value) return value;
   if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith('data:') || value.startsWith('blob:')) {
@@ -22,7 +26,7 @@ function assetUrl(value) {
   }
   // En GitHub Pages las fotos viajan con el sitio; en Render se sirven locales.
   if (value.startsWith('/static/')) {
-    return API_BASE ? value.slice(1) : value;
+    return API_BASE ? `${ASSET_BASE}${value.slice(1)}` : value;
   }
   if (value.startsWith('/')) return `${API_BASE}${value}`;
   return value;
@@ -248,7 +252,7 @@ async function apiOnce(path, { method, body, timeout }) {
     const response = await fetch(`${API_BASE}/api${path}`, {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? JSON.stringify(ALWAYS_OPEN ? { ...body, always_open: true } : body) : undefined,
       signal: controller.signal
     });
     let data = null;
@@ -293,7 +297,7 @@ async function init() {
 
   try {
     const [config, menu] = await Promise.all([
-      api('/config', { timeout: 60000, retries: 2, retryDelay: 4000 }),
+      api(ALWAYS_OPEN ? '/config?always_open=true' : '/config', { timeout: 60000, retries: 2, retryDelay: 4000 }),
       api('/menu', { timeout: 60000, retries: 2, retryDelay: 4000 })
     ]);
     // GitHub Pages publica su propio contacto: no depende de la API de Render.
@@ -326,6 +330,7 @@ const DEFAULT_OPEN_TIME = '05:00';
 const DEFAULT_CLOSE_TIME = '23:30';
 
 function bogotaIsOpen(open = DEFAULT_OPEN_TIME, close = DEFAULT_CLOSE_TIME) {
+  if (ALWAYS_OPEN) return true;
   try {
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Bogota',
@@ -458,7 +463,7 @@ function renderWelcome() {
   hero.className = 'hero-wrap';
   hero.innerHTML = `
     <div class="hero-card">
-      <div class="hero-eyebrow"><span class="dot${isOpen ? '' : ' closed'}"></span> ${escapeHtml(statusLabel)}${contact.hours ? ` · ${escapeHtml(contact.hours)}` : ''}</div>
+      <div class="hero-eyebrow"><span class="dot${isOpen ? '' : ' closed'}"></span> ${escapeHtml(statusLabel)}${contact.hours && !ALWAYS_OPEN ? ` · ${escapeHtml(contact.hours)}` : ''}</div>
       <h1>Tu antojo costeño,<br><em>a un mensaje.</em></h1>
       <p>Hola, soy <strong>Sinu</strong>, el asistente de ${escapeHtml(name)}. Arma tu pedido, te calculo el domicilio y lo confirmamos por aquí en menos de un minuto.</p>
       <div class="hero-actions">

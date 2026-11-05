@@ -108,7 +108,9 @@ class ChatEngine:
     # API pública
     # ------------------------------------------------------------------
 
-    def handle(self, session: Session, message: str) -> dict:
+    def handle(
+        self, session: Session, message: str, always_open: bool = False
+    ) -> dict:
         raw = (message or "").strip()[: self.settings.max_message_chars]
         norm = normalize(raw)
         session.touch()
@@ -126,7 +128,8 @@ class ChatEngine:
         # Fuera de horario no se toman pedidos; solo se informa el horario y
         # se permite consultar el estado de un pedido ya hecho.
         if (
-            intent not in ("hours", "status")
+            not always_open
+            and intent not in ("hours", "status")
             and not order_code
             and not schedule_status(
                 self.settings.open_time, self.settings.close_time

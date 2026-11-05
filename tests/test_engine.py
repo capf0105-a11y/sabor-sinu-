@@ -231,3 +231,18 @@ def test_cerrado_responde_mensaje_de_horario(setup, monkeypatch):
     # Preguntar el horario sigue funcionando estando cerrado.
     response = say(engine, session, "¿Cuál es el horario?")
     assert "cerrados" in response["blocks"][0]["text"]
+
+
+def test_siempre_abierto_ignora_el_horario(setup, monkeypatch):
+    engine, _, session = setup
+    monkeypatch.setattr(
+        "app.engine.schedule_status",
+        lambda *args, **kwargs: {"is_open": False, "status_label": "Cerrado"},
+    )
+    response = say_open(engine, session, "Quiero dos suizos")
+    assert "no estamos atendiendo" not in response["blocks"][0]["text"]
+    assert response["cart"]["count"] == 2
+
+
+def say_open(engine: ChatEngine, session: Session, message: str) -> dict:
+    return engine.handle(session, message, always_open=True)
