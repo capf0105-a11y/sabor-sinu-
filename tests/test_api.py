@@ -14,10 +14,11 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def negocio_abierto(monkeypatch):
     """El chat rechaza pedidos fuera de horario; las pruebas no deben depender de la hora."""
-    monkeypatch.setattr(
-        "app.engine.schedule_status",
-        lambda *args, **kwargs: {"is_open": True, "status_label": "Abierto ahora"},
-    )
+    for target in ("app.engine.schedule_status", "app.main.schedule_status"):
+        monkeypatch.setattr(
+            target,
+            lambda *args, **kwargs: {"is_open": True, "status_label": "Abierto ahora"},
+        )
 
 
 def test_home_y_salud():
