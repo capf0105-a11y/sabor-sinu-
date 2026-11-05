@@ -289,6 +289,15 @@ async function init() {
       api('/config', { timeout: 60000, retries: 2, retryDelay: 4000 }),
       api('/menu', { timeout: 60000, retries: 2, retryDelay: 4000 })
     ]);
+    // GitHub Pages publica su propio contacto: no depende de la API de Render.
+    const pageContact = document.querySelector('meta[name="sinu-contact"]')?.content;
+    if (pageContact) {
+      try {
+        config.contact = { ...(config.contact || {}), ...JSON.parse(pageContact) };
+      } catch (error) {
+        console.warn('No se pudo leer el contacto local.', error);
+      }
+    }
     state.config = config;
     state.menu = menu.items || [];
     state.menuById = Object.fromEntries(state.menu.map((item) => [item.id, item]));

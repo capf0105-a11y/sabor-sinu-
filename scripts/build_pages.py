@@ -13,6 +13,7 @@ Después de cambiar productos, fotos o estilos, vuelve a ejecutarlo y sube
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -51,13 +52,40 @@ def _copy_public_tree() -> None:
             shutil.copy2(image, DOCS / "static" / "img" / image.name)
 
 
+def _contact_json() -> str:
+    """Datos de contacto publicados en la copia de GitHub Pages.
+
+    Salen de ``.env.example`` para que la tienda de Pages no dependa de las
+    variables de Render (que es lento y se queda dormido).
+    """
+    values: dict[str, str] = {}
+    for line in (ROOT / ".env.example").read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value.strip().strip('"').strip("'")
+
+    phone = values.get("BUSINESS_PHONE", "+57 316 814 4276")
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    contact = {
+        "phone": phone,
+        "phone_link": f"tel:+{digits}",
+        "whatsapp": f"https://wa.me/{values.get('BUSINESS_WHATSAPP', digits)}",
+        "nequi": values.get("BUSINESS_NEQUI", phone),
+        "llave": values.get("BUSINESS_LLAVE", phone),
+    }
+    return json.dumps(contact, ensure_ascii=False)
+
+
 def _build_index() -> None:
     index = (STATIC / "index.html").read_text(encoding="utf-8")
     index = index.replace(
         '<meta name="theme-color" content="#f7f1e7" id="metaTheme">',
         (
             '<meta name="theme-color" content="#f7f1e7" id="metaTheme">\n'
-            f'  <meta name="sinu-api-base" content="{API_BASE}">'
+            f'  <meta name="sinu-api-base" content="{API_BASE}">\n'
+            f"  <meta name=\"sinu-contact\" content='{_contact_json()}'>"
         ),
     )
     index = index.replace('href="/static/', 'href="static/')
