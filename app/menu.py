@@ -62,7 +62,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Queso costeño gratinado",
         ),
         category="Principales",
-        image="/static/img/suizo.jpg",
+        image="/static/img/suizo.jpg?v=20261105b",
         badge="Más vendido",
         aliases=(
             "suizo con lomito monteriano",
@@ -94,7 +94,7 @@ PRODUCTS: tuple[Product, ...] = (
             "Queso mozzarella y salsa tártara",
         ),
         category="Principales",
-        image="/static/img/superperro.jpg",
+        image="/static/img/superperro.jpg?v=20261105b",
         badge="De la casa",
         aliases=(
             "super perro de la casa",
@@ -176,7 +176,7 @@ PRODUCTS: tuple[Product, ...] = (
         description="Bien fría, 400 ml. Elige Postobón para acompañar tu pedido.",
         ingredients=("Botella 400 ml", "Servida bien fría"),
         category="Bebidas",
-        image="/static/img/gaseosa_postobon.jpg",
+        image="/static/img/gaseosa_postobon.jpg?v=20261105b",
         badge="Bien fría",
         aliases=(
             "gaseosa postobon",
