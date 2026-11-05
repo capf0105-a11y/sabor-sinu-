@@ -362,11 +362,42 @@ function updateOpenPill(isOpen, label) {
     : 'Ahora estamos cerrados';
 }
 
+let businessOpen = true;
+
+function setBusinessOpen(isOpen) {
+  businessOpen = isOpen;
+  document.body.classList.toggle('is-closed', !isOpen);
+}
+
+// Si el negocio está cerrado avisa y devuelve true (para cortar la acción).
+function blockIfClosed() {
+  if (businessOpen) return false;
+  const hours = state.config?.contact?.hours;
+  toast(
+    `Estamos cerrados y no recibimos pedidos ahora.${hours ? ` Horario: ${hours}.` : ''}`,
+    'error'
+  );
+  return true;
+}
+
+// Recalcula con la hora de Colombia por si la página queda abierta toda la noche.
+function refreshOpenState() {
+  const contact = state.config?.contact;
+  if (!contact) return;
+  const isOpen = bogotaIsOpen(contact.open_time, contact.close_time);
+  if (isOpen !== businessOpen) {
+    setBusinessOpen(isOpen);
+    updateOpenPill(isOpen);
+  }
+}
+setInterval(refreshOpenState, 60000);
+
 function applyConfig() {
   const contact = state.config.contact || {};
   const isOpen = typeof contact.is_open === 'boolean'
     ? contact.is_open
     : bogotaIsOpen(contact.open_time, contact.close_time);
+  setBusinessOpen(isOpen);
   updateOpenPill(isOpen, contact.status_label);
   if (contact.phone_link) {
     els.headerPhone.href = contact.phone_link;
@@ -895,7 +926,7 @@ function renderCart() {
 }
 
 async function addToCart(productId, qty, button) {
-  if (state.cartBusy) return;
+  if (state.cartBusy || blockIfClosed()) return;
   state.cartBusy = true;
   if (button) button.disabled = true;
   try {
@@ -1184,12 +1215,14 @@ function bindEvents() {
     if (!button) return;
     const item = button.closest('[data-uid]');
     if (!item) return;
+    if (button.dataset.cartAction === 'inc' && blockIfClosed()) return;
     cartAction(button.dataset.cartAction, item.dataset.uid);
   });
 
   els.cartFoot.addEventListener('click', (event) => {
     const checkout = event.target.closest('[data-checkout]');
     if (checkout) {
+      if (blockIfClosed()) return;
       if (!checkout.disabled) {
         closeCart();
         sendMessage('Finalizar pedido');
@@ -1243,6 +1276,7 @@ function bindEvents() {
 
     const add = event.target.closest('[data-add]');
     if (add) {
+      if (blockIfClosed()) return;
       const card = add.closest('.product-card');
       if (!card) return;
       const productId = card.dataset.product;

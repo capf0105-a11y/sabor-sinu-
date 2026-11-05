@@ -1552,3 +1552,14 @@ body.no-scroll { overflow: hidden; }
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Negocio cerrado: no se puede armar ni finalizar el pedido */
+body.is-closed .btn-add,
+body.is-closed .cart-checkout,
+body.is-closed [data-cart-action="inc"],
+body.is-closed [data-step] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}

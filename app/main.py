@@ -498,6 +498,16 @@ async def chat(payload: ChatIn, background: BackgroundTasks) -> dict:
 async def cart(payload: CartIn) -> dict:
     sessions.cleanup()
     session = sessions.get_or_create(payload.session_id)
+    if payload.action in ("add", "inc") and not schedule_status(
+        settings.open_time, settings.close_time
+    )["is_open"]:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Estamos cerrados y no recibimos pedidos ahora. "
+                f"Horario: {settings.business_hours}."
+            ),
+        )
     try:
         snapshot = engine.apply_cart_action(
             session, payload.action, payload.product_id, payload.uid, payload.qty

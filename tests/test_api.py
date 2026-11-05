@@ -289,3 +289,16 @@ def test_pages_publico_actualizado():
     app_js = (root / "docs" / "static" / "js" / "app.js").read_text(encoding="utf-8")
     assert "sinu-api-base" in app_js
     assert "assetUrl(product.image)" in app_js
+
+
+def test_carrito_bloqueado_fuera_de_horario(monkeypatch):
+    monkeypatch.setattr(
+        "app.main.schedule_status",
+        lambda *args, **kwargs: {"is_open": False, "status_label": "Cerrado"},
+    )
+    response = client.post(
+        "/api/cart",
+        json={"action": "add", "product_id": "gaseosa_coca", "qty": 1},
+    )
+    assert response.status_code == 403
+    assert "cerrados" in response.json()["detail"]
