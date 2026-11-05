@@ -57,10 +57,11 @@ class Settings:
     # Marca
     business_name: str = _env("BUSINESS_NAME", "Sabor Sinú")
     business_tagline: str = _env("BUSINESS_TAGLINE", "Cocina rápida costeña")
-    business_phone: str = _env("BUSINESS_PHONE", "+57 316 814 4276")
-    business_whatsapp: str = _env("BUSINESS_WHATSAPP", "573168144276")
-    business_nequi: str = _env("BUSINESS_NEQUI", "316 814 4276")
-    business_llave: str = _env("BUSINESS_LLAVE", "316 814 4276")
+    # Números fijos: no dependen de variables de entorno de Render.
+    business_phone: str = "+57 316 814 4276"
+    business_whatsapp: str = "573168144276"
+    business_nequi: str = "316 814 4276"
+    business_llave: str = "316 814 4276"
     business_address: str = _env(
         "BUSINESS_ADDRESS", "Calle 34 # 6-12, Centro, Montería, Córdoba"
     )
