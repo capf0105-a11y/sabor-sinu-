@@ -35,6 +35,11 @@ def test_config_y_menu():
     assert config["brand"]["name"] == settings.business_name
     assert config["delivery"]["free_from"] == settings.free_delivery_from
     assert len(config["delivery"]["zones"]) == 3
+    assert config["delivery"]["eta_minutes"] == (
+        settings.prep_minutes + settings.delivery_minutes
+    )
+    assert isinstance(config["contact"]["is_open"], bool)
+    assert config["contact"]["status_label"] in {"Abierto ahora", "Cerrado"}
 
     menu = client.get("/api/menu").json()
     assert len(menu["items"]) == 8
@@ -42,6 +47,9 @@ def test_config_y_menu():
     assert prices["suizo"] == 33600
     assert prices["hamburguesa"] == 18000
     assert prices["gaseosa_coca"] == 4500
+    prep = {item["id"]: item["prep_minutes"] for item in menu["items"]}
+    assert prep["suizo"] == 18
+    assert prep["gaseosa_coca"] == 2
 
 
 def test_chat_y_carrito():

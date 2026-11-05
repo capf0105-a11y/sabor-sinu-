@@ -53,6 +53,8 @@ const els = {
   iconMoon: $('#iconMoon'),
   iconSun: $('#iconSun'),
   headerPhone: $('#headerPhone'),
+  openPill: $('#openPill'),
+  openPillText: $('#openPillText'),
   statusModal: $('#statusModal'),
   statusContent: $('#statusContent'),
   metaTheme: $('#metaTheme')
@@ -276,6 +278,8 @@ async function init() {
   bindEvents();
   updateThemeUI();
   autoResize();
+  // Pinta el estado de inmediato con la hora de Colombia, sin esperar la API.
+  updateOpenPill(bogotaIsOpen());
 
   els.messageList.innerHTML = '<div class="system-note" id="bootNote">Conectando con la tienda…</div>';
   const slowTimer = setTimeout(() => {
@@ -315,8 +319,52 @@ async function init() {
   }
 }
 
+const DEFAULT_OPEN_TIME = '11:00';
+const DEFAULT_CLOSE_TIME = '22:30';
+
+function bogotaIsOpen(open = DEFAULT_OPEN_TIME, close = DEFAULT_CLOSE_TIME) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Bogota',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(new Date());
+    const hour = Number(parts.find((part) => part.type === 'hour').value) % 24;
+    const minute = Number(parts.find((part) => part.type === 'minute').value);
+    const current = hour * 60 + minute;
+    const toMinutes = (value) => {
+      const [h, m] = String(value || '').split(':').map(Number);
+      return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+    };
+    const start = toMinutes(open);
+    const end = toMinutes(close);
+    if (start === end) return true;
+    return start < end
+      ? current >= start && current < end
+      : current >= start || current < end;
+  } catch (error) {
+    return true;
+  }
+}
+
+function updateOpenPill(isOpen, label) {
+  if (!els.openPill) return;
+  els.openPill.classList.toggle('closed', !isOpen);
+  if (els.openPillText) {
+    els.openPillText.textContent = label || (isOpen ? 'Abierto ahora' : 'Cerrado');
+  }
+  els.openPill.title = isOpen
+    ? 'Estamos recibiendo pedidos'
+    : 'Ahora estamos cerrados';
+}
+
 function applyConfig() {
   const contact = state.config.contact || {};
+  const isOpen = typeof contact.is_open === 'boolean'
+    ? contact.is_open
+    : bogotaIsOpen(contact.open_time, contact.close_time);
+  updateOpenPill(isOpen, contact.status_label);
   if (contact.phone_link) {
     els.headerPhone.href = contact.phone_link;
     const noscriptLink = $('noscript + *') || null;
@@ -367,12 +415,16 @@ function renderWelcome() {
   const contact = state.config?.contact || {};
   const delivery = state.config?.delivery || {};
   const name = brand.name || 'Sabor Sinú';
+  const isOpen = typeof contact.is_open === 'boolean'
+    ? contact.is_open
+    : bogotaIsOpen(contact.open_time, contact.close_time);
+  const statusLabel = contact.status_label || (isOpen ? 'Abierto ahora' : 'Cerrado');
 
   const hero = document.createElement('div');
   hero.className = 'hero-wrap';
   hero.innerHTML = `
     <div class="hero-card">
-      <div class="hero-eyebrow"><span class="dot"></span> ${escapeHtml(contact.hours || 'Abierto ahora')}</div>
+      <div class="hero-eyebrow"><span class="dot${isOpen ? '' : ' closed'}"></span> ${escapeHtml(statusLabel)}${contact.hours ? ` · ${escapeHtml(contact.hours)}` : ''}</div>
       <h1>Tu antojo costeño,<br><em>a un mensaje.</em></h1>
       <p>Hola, soy <strong>Sinu</strong>, el asistente de ${escapeHtml(name)}. Arma tu pedido, te calculo el domicilio y lo confirmamos por aquí en menos de un minuto.</p>
       <div class="hero-actions">
@@ -385,7 +437,7 @@ function renderWelcome() {
       <div class="hero-meta">
         <span>🛵 Domicilio desde ${money(delivery.base_fee)}</span>
         <span>🎁 Gratis desde ${money(delivery.free_from)}</span>
-        <span>⏱ ${delivery.eta_minutes || 45} min aprox.</span>
+        <span>⏱ ${delivery.eta_minutes || 30} min aprox.</span>
       </div>
     </div>`;
   els.messageList.appendChild(hero);
@@ -559,7 +611,7 @@ function productCardHTML(product) {
           <h3>${escapeHtml(product.name)}</h3>
           <span class="product-price">${money(product.price)}</span>
         </div>
-        ${soldOut ? '' : `<small class="product-ship">+ ${money(fee)} domicilio</small>`}
+        ${soldOut ? '' : `<small class="product-ship">⏱ ${product.prep_minutes || 15} min · + ${money(fee)} domicilio</small>`}
         <p class="product-desc" data-desc>${escapeHtml(product.description)}</p>
         <button class="product-more" type="button" data-more>Ver ingredientes</button>
         <div class="product-tags">${tags}</div>

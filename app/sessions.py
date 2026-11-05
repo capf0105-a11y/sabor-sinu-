@@ -110,6 +110,11 @@ def cart_subtotal(cart: list[CartItem]) -> int:
     return sum(item.line_total for item in cart)
 
 
+def cart_prep_minutes(cart: list[CartItem]) -> int:
+    """Preparación del pedido: manda el plato que más tarda."""
+    return max((item.product.prep_minutes for item in cart), default=0)
+
+
 def cart_totals(cart: list[CartItem], barrio: str | None, settings: Settings) -> dict:
     subtotal = cart_subtotal(cart)
     if subtotal <= 0:

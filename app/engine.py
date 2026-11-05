@@ -40,11 +40,13 @@ from .nlu import (
     split_segments,
 )
 from .orders import PAYMENT_LABELS, OrderStore, public_order
+from .utils import schedule_status
 from .sessions import (
     CartItem,
     Session,
     add_to_cart,
     cart_count,
+    cart_prep_minutes,
     cart_public,
     cart_subtotal,
     cart_summary_text,
@@ -868,6 +870,8 @@ class ChatEngine:
     def _summary_block(self, session: Session) -> dict:
         customer = session.customer
         totals = cart_totals(session.cart, customer.get("barrio"), self.settings)
+        prep = cart_prep_minutes(session.cart) or self.settings.prep_minutes
+        eta = prep + self.settings.delivery_minutes
         return {
             "type": "summary",
             "summary": {
@@ -888,9 +892,7 @@ class ChatEngine:
                 "delivery_fee": totals["delivery_fee"],
                 "total": totals["total"],
                 "free_delivery": totals["free_delivery"],
-                "eta_label": (
-                    f"{self.settings.prep_minutes + self.settings.delivery_minutes} min aprox."
-                ),
+                "eta_label": f"{eta} min aprox.",
             },
         }
 
@@ -912,13 +914,14 @@ class ChatEngine:
             return self._empty_cart_reply(session)
         totals = cart_totals(session.cart, session.customer.get("barrio"), self.settings)
         customer = dict(session.customer)
+        prep = cart_prep_minutes(session.cart) or self.settings.prep_minutes
         order = self.store.create(
             customer=customer,
             items=items_for_order(session.cart),
             subtotal=totals["subtotal"],
             delivery_fee=totals["delivery_fee"],
             total=totals["total"],
-            prep_minutes=self.settings.prep_minutes,
+            prep_minutes=prep,
             delivery_minutes=self.settings.delivery_minutes,
         )
         public = public_order(order)
@@ -927,7 +930,7 @@ class ChatEngine:
         session.stage = "confirmed"
         session.last_order_id = order["id"]
 
-        eta = self.settings.prep_minutes + self.settings.delivery_minutes
+        eta = prep + self.settings.delivery_minutes
         payment = customer.get("payment", "")
         payment_label = PAYMENT_LABELS.get(payment, payment)
         payment_number = (
@@ -1094,8 +1097,11 @@ class ChatEngine:
                         "Hacemos domicilios en **Montería** 🛵\n"
                         f"{zones}\n\n"
                         f"El envío es **gratis desde {money(self.settings.free_delivery_from)}** "
-                        f"y el tiempo estimado es de "
-                        f"**{self.settings.prep_minutes + self.settings.delivery_minutes} minutos**."
+                        "y el tiempo estimado va de "
+                        f"**{min(p.prep_minutes for p in PRODUCTS_BY_ID.values()) + self.settings.delivery_minutes}"
+                        " a "
+                        f"{max(p.prep_minutes for p in PRODUCTS_BY_ID.values()) + self.settings.delivery_minutes} minutos** "
+                        "según lo que pidas."
                     )
                 ],
                 [quick("Ver el menú"), quick("Finalizar pedido")],
@@ -1116,11 +1122,17 @@ class ChatEngine:
             )
 
         if intent == "hours":
+            status = schedule_status(
+                self.settings.open_time, self.settings.close_time
+            )
+            estado = "abiertos" if status["is_open"] else "cerrados"
             return self._resp(
                 session,
                 [
                     text(
-                        f"Atendemos **{self.settings.business_hours}**.\n"
+                        f"Atendemos **{self.settings.business_hours}** "
+                        "(hora de Colombia).\n"
+                        f"Ahora mismo estamos **{estado}**.\n"
                         "Los pedidos web se reciben dentro de ese horario y se despachan de inmediato."
                     )
                 ],

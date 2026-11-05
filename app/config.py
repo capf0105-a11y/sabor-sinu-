@@ -67,13 +67,15 @@ class Settings:
     business_hours: str = _env(
         "BUSINESS_HOURS", "Lunes a domingo · 11:00 a.m. – 10:30 p.m."
     )
+    open_time: str = _env("OPEN_TIME", "11:00")
+    close_time: str = _env("CLOSE_TIME", "22:30")
     business_instagram: str = _env("BUSINESS_INSTAGRAM", "@saborsinu")
 
     # Domicilios y tiempos
     delivery_base_fee: int = _env_int("DELIVERY_BASE_FEE", 2000)
     free_delivery_from: int = _env_int("FREE_DELIVERY_FROM", 80000)
-    prep_minutes: int = _env_int("PREP_MINUTES", 25)
-    delivery_minutes: int = _env_int("DELIVERY_MINUTES", 20)
+    prep_minutes: int = _env_int("PREP_MINUTES", 18)
+    delivery_minutes: int = _env_int("DELIVERY_MINUTES", 12)
     timezone: str = _env("TIMEZONE", "America/Bogota")
 
     # Correo

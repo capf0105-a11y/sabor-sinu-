@@ -26,7 +26,7 @@ from .orders import PAYMENT_LABELS, OrderStore, admin_order, public_order
 from .schemas import AdminLoginIn, CartIn, ChatIn, StockIn
 from .sessions import SessionStore, cart_public
 from .stock import StockStore
-from .utils import LoginGuard, RateLimiter
+from .utils import LoginGuard, RateLimiter, schedule_status
 
 logging.basicConfig(
     level=logging.INFO,
@@ -433,6 +433,7 @@ async def health_alias() -> dict:
 
 @app.get("/api/config")
 async def get_config() -> dict:
+    status = schedule_status(settings.open_time, settings.close_time)
     return {
         "brand": {
             "name": settings.business_name,
@@ -448,6 +449,10 @@ async def get_config() -> dict:
             "address": settings.business_address,
             "hours": settings.business_hours,
             "maps": settings.maps_link,
+            "is_open": status["is_open"],
+            "status_label": status["status_label"],
+            "open_time": settings.open_time,
+            "close_time": settings.close_time,
         },
         "delivery": {
             "base_fee": settings.delivery_base_fee,

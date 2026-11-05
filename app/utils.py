@@ -23,6 +23,45 @@ def iso_now() -> str:
     return now_bogota().isoformat(timespec="seconds")
 
 
+def _clock_minutes(value: str) -> int:
+    """Convierte "HH:MM" a minutos desde medianoche (0 si viene mal)."""
+    try:
+        hours, minutes = str(value).strip().split(":")[:2]
+        return int(hours) * 60 + int(minutes)
+    except (AttributeError, ValueError):
+        return 0
+
+
+def schedule_status(
+    open_time: str, close_time: str, now: datetime | None = None
+) -> dict:
+    """Estado de apertura según la hora de Colombia, no la del servidor.
+
+    Soporta horarios que cruzan la medianoche (p. ej. 18:00 → 02:00).
+    """
+    current = now or now_bogota()
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=BOGOTA)
+    else:
+        current = current.astimezone(BOGOTA)
+
+    minutes = current.hour * 60 + current.minute
+    start = _clock_minutes(open_time)
+    end = _clock_minutes(close_time)
+
+    if start == end:
+        is_open = True
+    elif start < end:
+        is_open = start <= minutes < end
+    else:
+        is_open = minutes >= start or minutes < end
+
+    return {
+        "is_open": is_open,
+        "status_label": "Abierto ahora" if is_open else "Cerrado",
+    }
+
+
 def money(value: int | float) -> str:
     """Formatea pesos colombianos: 33600 -> $33.600."""
     return "$" + f"{int(round(value)):,}".replace(",", ".")
