@@ -322,3 +322,16 @@ def test_carrito_siempre_abierto_ignora_horario(monkeypatch):
     assert response.status_code == 200
     config = client.get("/api/config?always_open=true").json()
     assert config["contact"]["is_open"] is True
+
+
+def test_config_buenavista():
+    config = client.get("/api/config?always_open=true&town=buenavista").json()
+    assert config["contact"]["address"] == "Buenavista, Córdoba"
+    assert config["delivery"]["zones"] == []
+    assert config["delivery"]["flat_fee"] == 2000
+
+    chat = client.post(
+        "/api/chat",
+        json={"message": "Quiero dos suizos", "town": "buenavista", "always_open": True},
+    ).json()
+    assert chat["cart"]["delivery_fee"] == 2000

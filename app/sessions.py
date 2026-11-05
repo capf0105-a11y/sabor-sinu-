@@ -117,6 +117,18 @@ def cart_prep_minutes(cart: list[CartItem]) -> int:
 
 def cart_totals(cart: list[CartItem], barrio: str | None, settings: Settings) -> dict:
     subtotal = cart_subtotal(cart)
+    if settings.flat_delivery_fee is not None:
+        # Valor único de domicilio (sin zonas ni envío gratis).
+        fee = settings.flat_delivery_fee if subtotal > 0 else 0
+        return {
+            "subtotal": subtotal,
+            "delivery_fee": fee,
+            "total": subtotal + fee,
+            "free_delivery": False,
+            "free_delivery_from": 0,
+            "remaining_for_free": 0,
+            "delivery_estimated": False,
+        }
     if subtotal <= 0:
         fee = 0
         free = False
@@ -193,6 +205,7 @@ class Session:
     customer: dict = field(default_factory=dict)
     last_order_id: str | None = None
     greeted: bool = False
+    town: str = ""  # "" = Montería, "buenavista" = Buenavista, Córdoba
 
     def touch(self) -> None:
         self.updated_at = time.time()

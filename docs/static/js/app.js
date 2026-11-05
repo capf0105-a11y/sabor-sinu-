@@ -17,7 +17,15 @@ const API_BASE = (document.querySelector('meta[name="sinu-api-base"]')?.content 
 
 /* Versión sin restricción de horario (página /abierto/ de GitHub Pages). */
 const ALWAYS_OPEN = document.querySelector('meta[name="sinu-always-open"]')?.content === '1';
+const TOWN = document.querySelector('meta[name="sinu-town"]')?.content || '';
 const ASSET_BASE = document.querySelector('meta[name="sinu-asset-base"]')?.content || '';
+
+function configPath() {
+  const params = [];
+  if (ALWAYS_OPEN) params.push('always_open=true');
+  if (TOWN) params.push(`town=${encodeURIComponent(TOWN)}`);
+  return params.length ? `/config?${params.join('&')}` : '/config';
+}
 
 function assetUrl(value) {
   if (!value) return value;
@@ -252,7 +260,7 @@ async function apiOnce(path, { method, body, timeout }) {
     const response = await fetch(`${API_BASE}/api${path}`, {
       method,
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(ALWAYS_OPEN ? { ...body, always_open: true } : body) : undefined,
+      body: body ? JSON.stringify({ ...body, ...(ALWAYS_OPEN ? { always_open: true } : {}), ...(TOWN ? { town: TOWN } : {}) }) : undefined,
       signal: controller.signal
     });
     let data = null;
@@ -297,7 +305,7 @@ async function init() {
 
   try {
     const [config, menu] = await Promise.all([
-      api(ALWAYS_OPEN ? '/config?always_open=true' : '/config', { timeout: 60000, retries: 2, retryDelay: 4000 }),
+      api(configPath(), { timeout: 60000, retries: 2, retryDelay: 4000 }),
       api('/menu', { timeout: 60000, retries: 2, retryDelay: 4000 })
     ]);
     // GitHub Pages publica su propio contacto: no depende de la API de Render.
@@ -474,8 +482,10 @@ function renderWelcome() {
         <button class="btn-ghost" type="button" data-quick="Recomiéndame algo">Recomiéndame algo</button>
       </div>
       <div class="hero-meta">
-        <span>🛵 Domicilio desde ${money(delivery.base_fee)}</span>
-        <span>🎁 Gratis desde ${money(delivery.free_from)}</span>
+        ${delivery.flat_fee
+          ? `<span>🛵 Domicilio ${money(delivery.flat_fee)} en todo el pueblo</span>`
+          : `<span>🛵 Domicilio desde ${money(delivery.base_fee)}</span>
+        <span>🎁 Gratis desde ${money(delivery.free_from)}</span>`}
         <span>⏱ ${delivery.eta_minutes || 30} min aprox.</span>
       </div>
     </div>`;

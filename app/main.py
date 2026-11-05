@@ -432,7 +432,7 @@ async def health_alias() -> dict:
 
 
 @app.get("/api/config")
-async def get_config(always_open: bool = False) -> dict:
+async def get_config(always_open: bool = False, town: str = "") -> dict:
     status = schedule_status(settings.open_time, settings.close_time)
     if always_open:
         status = {"is_open": True, "status_label": "Abierto ahora"}
@@ -448,7 +448,7 @@ async def get_config(always_open: bool = False) -> dict:
             "whatsapp": settings.whatsapp_link,
             "nequi": settings.business_nequi,
             "llave": settings.business_llave,
-            "address": settings.business_address,
+            "address": "Buenavista, Córdoba" if town == "buenavista" else settings.business_address,
             "hours": settings.business_hours,
             "maps": settings.maps_link,
             "is_open": status["is_open"],
@@ -462,7 +462,8 @@ async def get_config(always_open: bool = False) -> dict:
             "prep_minutes": settings.prep_minutes,
             "delivery_minutes": settings.delivery_minutes,
             "eta_minutes": settings.prep_minutes + settings.delivery_minutes,
-            "zones": [zone.public() for zone in ZONES],
+            "zones": [] if town == "buenavista" else [zone.public() for zone in ZONES],
+            "flat_fee": 2000 if town == "buenavista" else None,
         },
         "payments": [{"id": key, "label": label} for key, label in PAYMENT_LABELS.items()],
         "features": {
@@ -489,6 +490,7 @@ async def get_menu() -> dict:
 async def chat(payload: ChatIn, background: BackgroundTasks) -> dict:
     sessions.cleanup()
     session = sessions.get_or_create(payload.session_id)
+    session.town = payload.town or ""
     result = engine.handle(
         session, payload.message, always_open=payload.always_open
     )
@@ -502,6 +504,7 @@ async def chat(payload: ChatIn, background: BackgroundTasks) -> dict:
 async def cart(payload: CartIn) -> dict:
     sessions.cleanup()
     session = sessions.get_or_create(payload.session_id)
+    session.town = payload.town or ""
     if payload.action in ("add", "inc") and not payload.always_open and not schedule_status(
         settings.open_time, settings.close_time
     )["is_open"]:

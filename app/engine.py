@@ -11,6 +11,8 @@ HTTP para no hacer esperar al cliente.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import re
 
 from .config import Settings
@@ -59,6 +61,10 @@ from .sessions import (
 from .stock import StockStore
 from .utils import money, normalize
 
+BUENAVISTA_DELIVERY_FEE = 2000
+BUENAVISTA_LABEL = "Buenavista, Córdoba"
+
+
 def _strip_barrio_from_address(address: str, barrio: str) -> str:
     """Evita mostrar dos veces el barrio cuando el cliente lo incluye en la dirección."""
     if not address or not barrio:
@@ -101,6 +107,13 @@ class ChatEngine:
         self, settings: Settings, store: OrderStore, stock: StockStore | None = None
     ) -> None:
         self.settings = settings
+        # Versión de Buenavista, Córdoba: domicilio fijo y dirección con barrio.
+        self.settings_buenavista = replace(
+            settings,
+            flat_delivery_fee=BUENAVISTA_DELIVERY_FEE,
+            town_name="Buenavista, Córdoba",
+            business_address="Buenavista, Córdoba",
+        )
         self.store = store
         self.stock = stock
 
@@ -200,7 +213,7 @@ class ChatEngine:
                 [
                     text(
                         f"Quité **{removed.qty} × {removed.product.name}** del carrito.\n"
-                        f"{totals_line(session.cart, self._barrio(session), self.settings)}"
+                        f"{totals_line(session.cart, self._barrio(session), self._cfg(session))}"
                     )
                 ],
                 self._default_quick(session),
@@ -287,7 +300,7 @@ class ChatEngine:
             raise ValueError("Acción no válida.")
 
         session.touch()
-        return cart_public(session.cart, self._barrio(session), self.settings)
+        return cart_public(session.cart, self._barrio(session), self._cfg(session))
 
     def resume(self, session: Session) -> dict:
         if session.stage.startswith("checkout_"):
@@ -303,6 +316,17 @@ class ChatEngine:
     # ------------------------------------------------------------------
     # Respuestas base
     # ------------------------------------------------------------------
+
+    def _cfg(self, session: Session) -> Settings:
+        return self.settings_buenavista if session.town == "buenavista" else self.settings
+
+    def _delivery_line(self, session: Session) -> str:
+        if session.town == "buenavista":
+            return f"**Domicilios:** {money(BUENAVISTA_DELIVERY_FEE)} en todo Buenavista."
+        return (
+            f"**Domicilios:** desde {money(self.settings.delivery_base_fee)} · "
+            f"gratis desde {money(self.settings.free_delivery_from)}."
+        )
 
     def _barrio(self, session: Session) -> str | None:
         return session.customer.get("barrio")
@@ -320,7 +344,7 @@ class ChatEngine:
             "stage": session.stage,
             "blocks": blocks,
             "quick_replies": quick_replies or [],
-            "cart": cart_public(session.cart, self._barrio(session), self.settings),
+            "cart": cart_public(session.cart, self._barrio(session), self._cfg(session)),
             "order": order,
         }
         if notify_order_id:
@@ -341,8 +365,7 @@ class ChatEngine:
                 f"¡Hola! Soy **Sinu**, el asistente de {name} 🌭\n"
                 "Puedo armar tu pedido, calcular el domicilio y dejarlo listo en minutos.\n\n"
                 f"**Horario:** {self.settings.business_hours}\n"
-                f"**Domicilios:** desde {money(self.settings.delivery_base_fee)} · "
-                f"gratis desde {money(self.settings.free_delivery_from)}.\n"
+                f"{self._delivery_line(session)}\n"
                 f"**Pagos:** Nequi o Llave al {self.settings.business_nequi}."
             )
         ]
@@ -378,7 +401,7 @@ class ChatEngine:
                     "No estoy seguro de haberte entendido 🤔. Puedo ayudarte con:\n"
                     "• Armar tu pedido: *“dos suizos y una gaseosa”*\n"
                     "• Consultar precios o ingredientes\n"
-                    "• Calcular el domicilio en Montería\n"
+                    f"• Calcular el domicilio en {self._cfg(session).town_name}\n"
                     "• Cerrar el pedido y enviarlo a cocina"
                 )
             ],
@@ -521,7 +544,7 @@ class ChatEngine:
                     [
                         text(
                             "Listo, quité " + ", ".join(removed_labels) + ".\n"
-                            + totals_line(session.cart, self._barrio(session), self.settings)
+                            + totals_line(session.cart, self._barrio(session), self._cfg(session))
                         )
                     ],
                     self._default_quick(session),
@@ -621,7 +644,7 @@ class ChatEngine:
             text(
                 f"Perfecto, cerramos tu pedido 🧾\n\n"
                 f"**{cart_summary_text(session.cart)}**\n"
-                f"{totals_line(session.cart, None, self.settings)}\n\n"
+                f"{totals_line(session.cart, None, self._cfg(session))}\n\n"
                 "Para la entrega necesito tu **nombre completo**."
             )
         )
@@ -665,6 +688,11 @@ class ChatEngine:
         stage = session.stage
         if stage == "checkout_name":
             return "¿Cuál es tu **nombre completo**?"
+        if stage == "checkout_address" and session.town == "buenavista":
+            return (
+                "¿A qué **dirección y barrio** te llevamos el pedido? Escríbelos juntos "
+                "(ej: *Calle 5 #3-20, barrio El Centro*)."
+            )
         if stage == "checkout_address":
             return (
                 "¿A qué **dirección exacta** te llevamos el pedido? Incluye calle o carrera, "
@@ -715,6 +743,36 @@ class ChatEngine:
                 [
                     text(
                         f"Gracias, **{name.split()[0]}**. "
+                        + self._checkout_question(session)
+                    )
+                ],
+                [],
+            )
+
+        if stage == "checkout_address" and session.town == "buenavista":
+            address = extract_address(raw, strict=False)
+            if not address:
+                return self._resp(
+                    session,
+                    [
+                        text(
+                            "No alcancé a entender la dirección. Escríbela junto con el barrio, "
+                            "por ejemplo: *Calle 5 #3-20, barrio El Centro*."
+                        )
+                    ],
+                    [],
+                )
+            session.customer["address"] = address
+            session.customer["barrio"] = BUENAVISTA_LABEL
+            session.customer["zone"] = BUENAVISTA_LABEL
+            session.customer["delivery_fee"] = BUENAVISTA_DELIVERY_FEE
+            session.stage = "checkout_phone"
+            return self._resp(
+                session,
+                [
+                    text(
+                        f"Perfecto: **{address}**.\n"
+                        f"Domicilio **{money(BUENAVISTA_DELIVERY_FEE)}**.\n\n"
                         + self._checkout_question(session)
                     )
                 ],
@@ -894,7 +952,7 @@ class ChatEngine:
 
     def _summary_block(self, session: Session) -> dict:
         customer = session.customer
-        totals = cart_totals(session.cart, customer.get("barrio"), self.settings)
+        totals = cart_totals(session.cart, customer.get("barrio"), self._cfg(session))
         prep = cart_prep_minutes(session.cart) or self.settings.prep_minutes
         eta = prep + self.settings.delivery_minutes
         return {
@@ -911,7 +969,7 @@ class ChatEngine:
                     ),
                 },
                 "items": cart_public(
-                    session.cart, customer.get("barrio"), self.settings
+                    session.cart, customer.get("barrio"), self._cfg(session)
                 )["items"],
                 "subtotal": totals["subtotal"],
                 "delivery_fee": totals["delivery_fee"],
@@ -937,7 +995,7 @@ class ChatEngine:
             )
         if not session.cart:
             return self._empty_cart_reply(session)
-        totals = cart_totals(session.cart, session.customer.get("barrio"), self.settings)
+        totals = cart_totals(session.cart, session.customer.get("barrio"), self._cfg(session))
         customer = dict(session.customer)
         prep = cart_prep_minutes(session.cart) or self.settings.prep_minutes
         order = self.store.create(
@@ -1111,6 +1169,19 @@ class ChatEngine:
                 [quick("Ver el menú"), quick("Finalizar pedido")],
             )
 
+        if intent == "delivery" and session.town == "buenavista":
+            return self._resp(
+                session,
+                [
+                    text(
+                        "Hacemos domicilios en **Buenavista, Córdoba** 🛵\n"
+                        f"El domicilio cuesta **{money(BUENAVISTA_DELIVERY_FEE)}** "
+                        "en todo el pueblo."
+                    )
+                ],
+                [quick("Ver el menú"), quick("Finalizar pedido")],
+            )
+
         if intent == "delivery":
             zones = "\n".join(
                 f"• {zone.name}: {money(zone.fee)}" for zone in ZONES
@@ -1169,9 +1240,13 @@ class ChatEngine:
                 session,
                 [
                     text(
-                        f"Estamos en **{self.settings.business_address}**.\n"
-                        f"Teléfono: **{self.settings.business_phone}**\n"
-                        f"Mapa: {self.settings.maps_link}"
+                        f"Estamos en **{self._cfg(session).business_address}**.\n"
+                        f"Teléfono: **{self.settings.business_phone}**"
+                        + (
+                            ""
+                            if session.town == "buenavista"
+                            else f"\nMapa: {self.settings.maps_link}"
+                        )
                     )
                 ],
                 [
@@ -1204,7 +1279,7 @@ class ChatEngine:
                     text(
                         "Soy **Sinu** y puedo:\n"
                         "• Mostrarte el menú y agregar productos (también con extras).\n"
-                        "• Calcular el domicilio según tu barrio en Montería.\n"
+                        f"• Calcular el domicilio en {self._cfg(session).town_name}.\n"
                         "• Tomar tus datos y confirmar el pedido.\n"
                         "• Enviarte el estado del pedido.\n\n"
                         "Prueba con: *“Quiero dos suizos y una gaseosa”*."

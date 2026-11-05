@@ -59,6 +59,7 @@ def build_email(order: dict, settings: Settings, dry_run: bool = False) -> tuple
     }.get(payment_key)
     if payment_number:
         payment = f"{payment} al {payment_number}"
+    town_label = "Buenavista" if "Buenavista" in str(customer.get("barrio", "")) else "Montería"
     phone_digits = "".join(ch for ch in customer.get("phone", "") if ch.isdigit())
     total = money(order.get("total", 0))
     delivery_fee = (
@@ -100,7 +101,7 @@ def build_email(order: dict, settings: Settings, dry_run: bool = False) -> tuple
                   <td style="font-size:20px;font-weight:bold;color:#fdf7ed;letter-spacing:.2px;">
                     Sabor Sinú
                     <div style="font-size:11px;font-weight:normal;color:#c9b8a2;letter-spacing:1.6px;text-transform:uppercase;margin-top:3px;">
-                      Cocina rápida costeña · Montería
+                      Cocina rápida costeña · {town_label}
                     </div>
                   </td>
                   <td align="right" style="font-size:11px;color:#f2a93b;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase;">

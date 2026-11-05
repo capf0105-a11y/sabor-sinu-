@@ -72,6 +72,10 @@ class Settings:
     business_instagram: str = _env("BUSINESS_INSTAGRAM", "@saborsinu")
 
     # Domicilios y tiempos
+    # Ciudad/pueblo que se muestra en los textos y valor fijo de domicilio
+    # (None = tarifas por zona de Montería). Lo usa la versión de Buenavista.
+    town_name: str = "Montería"
+    flat_delivery_fee: int | None = None
     delivery_base_fee: int = _env_int("DELIVERY_BASE_FEE", 2000)
     free_delivery_from: int = _env_int("FREE_DELIVERY_FROM", 80000)
     prep_minutes: int = _env_int("PREP_MINUTES", 18)

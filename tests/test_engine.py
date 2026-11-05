@@ -246,3 +246,33 @@ def test_siempre_abierto_ignora_el_horario(setup, monkeypatch):
 
 def say_open(engine: ChatEngine, session: Session, message: str) -> dict:
     return engine.handle(session, message, always_open=True)
+
+
+def test_buenavista_domicilio_fijo_y_direccion_con_barrio(setup):
+    engine, store, _ = setup
+    session = Session(id="sess_bv", town="buenavista")
+    response = say(engine, session, "Quiero cuatro suizos")
+    # Subtotal de más de $80.000: en Buenavista el domicilio sigue siendo $2.000.
+    assert response["cart"]["delivery_fee"] == 2000
+    assert response["cart"]["free_delivery"] is False
+
+    say(engine, session, "Finalizar pedido")
+    response = say(engine, session, "Ana Pérez")
+    assert response["stage"] == "checkout_address"
+    assert "dirección y barrio" in response["blocks"][0]["text"]
+
+    # Una sola respuesta con dirección y barrio, sin pedir el barrio aparte.
+    response = say(engine, session, "Casa verde al lado de la iglesia, barrio El Centro")
+    assert response["stage"] == "checkout_phone"
+    assert session.customer["barrio"] == "Buenavista, Córdoba"
+
+    say(engine, session, "300 123 4567")
+    response = say(engine, session, "Llave")
+    summary = [b for b in response["blocks"] if b["type"] == "summary"][0]
+    assert summary["summary"]["delivery_fee"] == 2000
+
+    response = say(engine, session, "Confirmar pedido")
+    assert response["stage"] == "confirmed"
+    order = store.get(response["order"]["id"])
+    assert order["delivery_fee"] == 2000
+    assert order["customer"]["barrio"] == "Buenavista, Córdoba"

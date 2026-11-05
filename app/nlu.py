@@ -333,14 +333,14 @@ _ADDRESS_HINT = re.compile(
 )
 
 
-def extract_address(raw: str) -> str | None:
+def extract_address(raw: str, strict: bool = True) -> str | None:
     text = (raw or "").strip()
     text = _ADDRESS_PREFIX.sub("", text).strip(" .-")
     if not (8 <= len(text) <= 180):
         return None
     if len(re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", text)) < 3:
         return None
-    if not _ADDRESS_HINT.search(text):
+    if strict and not _ADDRESS_HINT.search(text):
         return None
     return re.sub(r"\s+", " ", text)
 

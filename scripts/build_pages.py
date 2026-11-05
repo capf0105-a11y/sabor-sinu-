@@ -119,11 +119,23 @@ def _build_abierto() -> None:
     _write(DOCS / "abierto" / "index.html", page)
 
 
+def _build_buenavista() -> None:
+    """Tercer enlace (/buenavista/): sin horario y con domicilio en Buenavista."""
+    page = (DOCS / "abierto" / "index.html").read_text(encoding="utf-8")
+    page = page.replace(
+        '<meta name="sinu-always-open" content="1">',
+        '<meta name="sinu-always-open" content="1">\n  <meta name="sinu-town" content="buenavista">',
+    )
+    page = page.replace("Montería", "Buenavista, Córdoba")
+    _write(DOCS / "buenavista" / "index.html", page)
+
+
 def main() -> None:
     _copy_public_tree()
     _build_index()
     _build_credits()
     _build_abierto()
+    _build_buenavista()
     # Evita que Jekyll procese los archivos y garantiza que se sirvan tal cual.
     (DOCS / ".nojekyll").write_text("", encoding="utf-8")
     print(f"GitHub Pages listo en {DOCS}")
