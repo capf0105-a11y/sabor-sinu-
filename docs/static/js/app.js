@@ -6,6 +6,9 @@
 'use strict';
 
 const STORAGE_KEY = 'sinu_session_id';
+// El pedido vive solo mientras la pestaña esté abierta (sessionStorage).
+// Se borra la sesión vieja que antes se guardaba de forma permanente.
+try { localStorage.removeItem(STORAGE_KEY); } catch (error) { /* sin almacenamiento */ }
 const THEME_KEY = 'sinu_theme';
 
 /* Cuando la tienda se sirve desde GitHub Pages, la API vive en Render.
@@ -64,7 +67,7 @@ const state = {
   config: null,
   menu: [],
   menuById: {},
-  sessionId: localStorage.getItem(STORAGE_KEY) || null,
+  sessionId: sessionStorage.getItem(STORAGE_KEY) || null,
   cart: emptyCart(),
   stage: 'browsing',
   lastOrder: null,
@@ -390,7 +393,7 @@ async function restoreSession() {
     }
   } catch (error) {
     state.sessionId = null;
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
   }
 }
 
@@ -477,7 +480,7 @@ async function sendMessage(rawText) {
       body: { session_id: state.sessionId, message: text }
     });
     state.sessionId = response.session_id;
-    localStorage.setItem(STORAGE_KEY, response.session_id);
+    sessionStorage.setItem(STORAGE_KEY, response.session_id);
     await renderBlocks(response.blocks || []);
     hideTyping();
     applyCart(response.cart);
@@ -800,7 +803,7 @@ function applyCart(cart) {
 
 function applySession(session) {
   state.sessionId = session.session_id;
-  localStorage.setItem(STORAGE_KEY, session.session_id);
+  sessionStorage.setItem(STORAGE_KEY, session.session_id);
   state.cart = session.cart || emptyCart();
   state.stage = session.stage || 'browsing';
   state.lastOrder = session.last_order_id || state.lastOrder;
@@ -906,7 +909,7 @@ async function addToCart(productId, qty, button) {
       }
     });
     state.sessionId = response.session_id;
-    localStorage.setItem(STORAGE_KEY, response.session_id);
+    sessionStorage.setItem(STORAGE_KEY, response.session_id);
     applyCart(response.cart);
     state.stage = response.stage || 'browsing';
     renderCart();
@@ -930,7 +933,7 @@ async function cartAction(action, uid) {
       body: { session_id: state.sessionId, action, uid }
     });
     state.sessionId = response.session_id;
-    localStorage.setItem(STORAGE_KEY, response.session_id);
+    sessionStorage.setItem(STORAGE_KEY, response.session_id);
     applyCart(response.cart);
     state.stage = response.stage || 'browsing';
     renderCart();
@@ -950,7 +953,7 @@ async function clearCart() {
       body: { session_id: state.sessionId, action: 'clear' }
     });
     state.sessionId = response.session_id;
-    localStorage.setItem(STORAGE_KEY, response.session_id);
+    sessionStorage.setItem(STORAGE_KEY, response.session_id);
     applyCart(response.cart);
     state.stage = response.stage || 'browsing';
     renderCart();
